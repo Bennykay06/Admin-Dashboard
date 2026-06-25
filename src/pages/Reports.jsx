@@ -1,11 +1,13 @@
-// src/pages/Reports.jsx - WITH PHOTO EVIDENCE DISPLAY
+// src/pages/Reports.jsx - WITH PERSISTENCE SUPPORT
 import React, { useState, useEffect } from 'react';
 import { 
   getReportsByHall, 
   getStatusLabel, 
   getTechnicians,
   getTechniciansBySpecialty,
-  getCategoryIcon
+  getCategoryIcon,
+  getPersistedReports,
+  savePersistedReports
 } from '../data/mockData';
 import HallSelector from '../components/HallSelector';
 
@@ -26,9 +28,17 @@ export default function Reports({ user }) {
   }, [user, selectedHall]);
 
   const handleStatusChange = (id, newStatus) => {
+    // Update local state
     setReports(reports.map(report => 
       report.id === id ? { ...report, status: newStatus } : report
     ));
+
+    // Update localStorage
+    const allReports = getPersistedReports();
+    const updatedAllReports = allReports.map(report => 
+      report.id === id ? { ...report, status: newStatus } : report
+    );
+    savePersistedReports(updatedAllReports);
   };
 
   const handleAssignReport = (report) => {
@@ -42,6 +52,7 @@ export default function Reports({ user }) {
 
     const technician = getTechnicians().find(t => t.id === selectedTechnician);
     
+    // Update local state
     setReports(reports.map(report => 
       report.id === selectedReport.id 
         ? { 
@@ -53,6 +64,21 @@ export default function Reports({ user }) {
           }
         : report
     ));
+
+    // Update localStorage
+    const allReports = getPersistedReports();
+    const updatedAllReports = allReports.map(report => 
+      report.id === selectedReport.id 
+        ? { 
+            ...report, 
+            assignedTo: technician.id,
+            assignedName: technician.name,
+            assignedSpecialty: technician.specialty,
+            status: 'in-progress'
+          }
+        : report
+    );
+    savePersistedReports(updatedAllReports);
 
     setShowAssignModal(false);
     setSelectedReport(null);

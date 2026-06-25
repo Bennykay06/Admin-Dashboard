@@ -1,6 +1,6 @@
-// src/data/mockData.js - WITH PHOTO EVIDENCE
-// ===== HALLS DATA =====
-export const halls = [
+// src/data/mockData.js - PERSISTENT DATA WITH TECH ASSIGNMENTS
+// ===== INITIAL HALLS DATA =====
+const initialHalls = [
   { id: '1', name: 'Unity Hall', code: 'unity', floors: 5, rooms: 50 },
   { id: '2', name: 'Independence Hall', code: 'independence', floors: 4, rooms: 40 },
   { id: '3', name: 'Republic Hall', code: 'republic', floors: 6, rooms: 60 },
@@ -9,8 +9,8 @@ export const halls = [
   { id: '6', name: 'Queen Elizabeth II Hall', code: 'queenshall', floors: 5, rooms: 55 },
 ];
 
-// ===== ADMINS DATA =====
-export const admins = [
+// ===== INITIAL ADMINS DATA =====
+const initialAdmins = [
   // Hall-Specific Admins
   { 
     id: '1', 
@@ -123,8 +123,8 @@ export const admins = [
   },
 ];
 
-// ===== STUDENTS DATA =====
-export const mockStudents = [
+// ===== INITIAL STUDENTS DATA =====
+const initialStudents = [
   { id: '1', name: 'John Mensah', email: 'john@st.knust.edu.gh', hallId: '1', hallName: 'Unity Hall', reports: 5 },
   { id: '2', name: 'Ama Serwaa', email: 'ama@st.knust.edu.gh', hallId: '2', hallName: 'Independence Hall', reports: 3 },
   { id: '3', name: 'Kwame Asante', email: 'kwame@st.knust.edu.gh', hallId: '3', hallName: 'Republic Hall', reports: 7 },
@@ -134,16 +134,16 @@ export const mockStudents = [
   { id: '7', name: 'Yaw Boakye', email: 'yaw@st.knust.edu.gh', hallId: '6', hallName: 'Queen Elizabeth II Hall', reports: 3 },
 ];
 
-// ===== STAFF DATA =====
-export const mockStaff = [
-  { id: '1', name: 'Mr. Osei Tutu', role: 'Admin', email: 'osei@snapfix.com', status: 'active' },
-  { id: '2', name: 'Mr. Kwaku Mensah', role: 'Technician', email: 'kwaku@snapfix.com', status: 'active' },
-  { id: '3', name: 'Ms. Abena Oforiwa', role: 'Technician', email: 'abena@snapfix.com', status: 'active' },
-  { id: '4', name: 'Mr. Kofi Asare', role: 'Technician', email: 'kofi@snapfix.com', status: 'active' },
+// ===== INITIAL STAFF DATA =====
+const initialStaff = [
+  { id: '1', name: 'Mr. Osei Tutu', role: 'Plumbing Technician', email: 'osei@snapfix.com', status: 'active' },
+  { id: '2', name: 'Mr. Kwaku Mensah', role: 'Electrical Technician', email: 'kwaku@snapfix.com', status: 'active' },
+  { id: '3', name: 'Ms. Abena Oforiwa', role: 'Carpentry Technician', email: 'abena@snapfix.com', status: 'active' },
+  { id: '4', name: 'Mr. Kofi Asare', role: 'Masonry Technician', email: 'kofi@snapfix.com', status: 'active' },
 ];
 
-// ===== REPORTS WITH PHOTO EVIDENCE =====
-export const mockReports = [
+// ===== INITIAL REPORTS (WITH PRE-ASSIGNMENTS) =====
+const initialReports = [
   {
     id: '1',
     studentName: 'John Mensah',
@@ -157,10 +157,10 @@ export const mockReports = [
     priority: 'high',
     timestamp: '2024-06-20T10:30:00Z',
     description: 'The fluorescent tube in my room has been flickering for 2 days and now completely dead.',
-    imageUri: 'https://via.placeholder.com/400x300/FFD700/333?text=Electrical+Issue',
-    assignedTo: null,
-    assignedName: null,
-    assignedSpecialty: null,
+    imageUri: 'https://images.unsplash.com/photo-1550985616-10810253b84d?w=400&q=80',
+    assignedTo: '8', // Assigned to Kwaku
+    assignedName: 'Kwaku Mensah',
+    assignedSpecialty: 'Electrical',
     technicianNotes: '',
     repairDate: null
   },
@@ -173,15 +173,15 @@ export const mockReports = [
     hallId: '2',
     hallName: 'Independence Hall',
     location: 'Independence Hall, Floor 1, Room 104',
-    status: 'pending',
+    status: 'in-progress',
     priority: 'medium',
     timestamp: '2024-06-19T14:20:00Z',
     description: 'The bathroom tap is leaking constantly and wasting water.',
-    imageUri: 'https://via.placeholder.com/400x300/00BFFF/333?text=Plumbing+Issue',
-    assignedTo: null,
-    assignedName: null,
-    assignedSpecialty: null,
-    technicianNotes: '',
+    imageUri: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&q=80',
+    assignedTo: '9', // Assigned to Osei
+    assignedName: 'Osei Tutu',
+    assignedSpecialty: 'Plumbing',
+    technicianNotes: 'Investigated the leak. Needs a replacement washer.',
     repairDate: null
   },
   {
@@ -197,7 +197,7 @@ export const mockReports = [
     priority: 'low',
     timestamp: '2024-06-18T09:15:00Z',
     description: 'The door lock is jammed and cannot be opened from outside.',
-    imageUri: 'https://via.placeholder.com/400x300/8B4513/333?text=Carpentry+Issue',
+    imageUri: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=400&q=80',
     assignedTo: null,
     assignedName: null,
     assignedSpecialty: null,
@@ -217,7 +217,7 @@ export const mockReports = [
     priority: 'medium',
     timestamp: '2024-06-17T16:45:00Z',
     description: 'There is a visible crack on the wall near the window.',
-    imageUri: 'https://via.placeholder.com/400x300/A0522D/333?text=Masonry+Issue',
+    imageUri: 'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?w=400&q=80',
     assignedTo: null,
     assignedName: null,
     assignedSpecialty: null,
@@ -233,15 +233,15 @@ export const mockReports = [
     hallId: '1',
     hallName: 'Unity Hall',
     location: 'Unity Hall, Floor 4, Room 410',
-    status: 'pending',
+    status: 'in-progress',
     priority: 'high',
     timestamp: '2024-06-16T11:00:00Z',
     description: 'The wall socket is sparking when I plug in my charger.',
-    imageUri: 'https://via.placeholder.com/400x300/FF6B35/333?text=Faulty+Socket',
-    assignedTo: null,
-    assignedName: null,
-    assignedSpecialty: null,
-    technicianNotes: '',
+    imageUri: 'https://images.unsplash.com/photo-1621905252507-b354bc25edac?w=400&q=80',
+    assignedTo: '8', // Assigned to Kwaku
+    assignedName: 'Kwaku Mensah',
+    assignedSpecialty: 'Electrical',
+    technicianNotes: 'Scheduled repair for Thursday afternoon.',
     repairDate: null
   },
   {
@@ -257,7 +257,7 @@ export const mockReports = [
     priority: 'medium',
     timestamp: '2024-06-15T13:30:00Z',
     description: 'The sink drain is completely blocked and water is backing up.',
-    imageUri: 'https://via.placeholder.com/400x300/1E90FF/333?text=Blocked+Drain',
+    imageUri: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&q=80',
     assignedTo: null,
     assignedName: null,
     assignedSpecialty: null,
@@ -277,7 +277,7 @@ export const mockReports = [
     priority: 'low',
     timestamp: '2024-06-14T09:00:00Z',
     description: 'The ceiling fan is not spinning.',
-    imageUri: 'https://via.placeholder.com/400x300/FFA500/333?text=Fan+Issue',
+    imageUri: 'https://images.unsplash.com/photo-1618944847023-38aa001235f0?w=400&q=80',
     assignedTo: null,
     assignedName: null,
     assignedSpecialty: null,
@@ -286,53 +286,126 @@ export const mockReports = [
   },
 ];
 
-// ===== LOCATIONS DATA =====
-export const mockLocations = [
-  { id: '1', name: 'Unity Hall', code: 'unity', floors: 5, rooms: 50 },
-  { id: '2', name: 'Independence Hall', code: 'independence', floors: 4, rooms: 40 },
-  { id: '3', name: 'Republic Hall', code: 'republic', floors: 6, rooms: 60 },
-  { id: '4', name: 'Africa Hall', code: 'africa', floors: 3, rooms: 30 },
-  { id: '5', name: 'University Hall', code: 'university', floors: 4, rooms: 45 },
-  { id: '6', name: 'Queen Elizabeth II Hall', code: 'queenshall', floors: 5, rooms: 55 },
-];
+// ===== LOCALSTORAGE SYNCHRONIZATION =====
+const initLocalStorage = () => {
+  if (typeof window !== 'undefined') {
+    if (!localStorage.getItem('snapfix_halls')) {
+      localStorage.setItem('snapfix_halls', JSON.stringify(initialHalls));
+    }
+    if (!localStorage.getItem('snapfix_admins')) {
+      localStorage.setItem('snapfix_admins', JSON.stringify(initialAdmins));
+    }
+    if (!localStorage.getItem('snapfix_students')) {
+      localStorage.setItem('snapfix_students', JSON.stringify(initialStudents));
+    }
+    if (!localStorage.getItem('snapfix_staff')) {
+      localStorage.setItem('snapfix_staff', JSON.stringify(initialStaff));
+    }
+    if (!localStorage.getItem('snapfix_reports')) {
+      localStorage.setItem('snapfix_reports', JSON.stringify(initialReports));
+    }
+  }
+};
 
-// ===== HELPER FUNCTIONS =====
+// Execute immediately
+initLocalStorage();
+
+// ===== EXPORT PERSISTED GETTERS / SETTERS =====
+export const getPersistedReports = () => {
+  return JSON.parse(localStorage.getItem('snapfix_reports') || '[]');
+};
+
+export const savePersistedReports = (reports) => {
+  localStorage.setItem('snapfix_reports', JSON.stringify(reports));
+};
+
+export const getPersistedAdmins = () => {
+  return JSON.parse(localStorage.getItem('snapfix_admins') || '[]');
+};
+
+export const savePersistedAdmins = (adminsList) => {
+  localStorage.setItem('snapfix_admins', JSON.stringify(adminsList));
+};
+
+export const getPersistedStaff = () => {
+  return JSON.parse(localStorage.getItem('snapfix_staff') || '[]');
+};
+
+export const savePersistedStaff = (staffList) => {
+  localStorage.setItem('snapfix_staff', JSON.stringify(staffList));
+};
+
+export const getPersistedHalls = () => {
+  return JSON.parse(localStorage.getItem('snapfix_halls') || '[]');
+};
+
+export const savePersistedHalls = (hallsList) => {
+  localStorage.setItem('snapfix_halls', JSON.stringify(hallsList));
+};
+
+// Maintain compatibility with static exports
+export const halls = initialHalls;
+export const admins = initialAdmins;
+export const mockStudents = initialStudents;
+export const mockStaff = initialStaff;
+export const mockReports = initialReports;
+export const mockLocations = halls;
+
+// ===== PERSISTENT HELPER FUNCTIONS =====
 export const getReportsByHall = (hallId) => {
-  if (!hallId) return mockReports;
-  return mockReports.filter(report => report.hallId === hallId);
+  const allReports = getPersistedReports();
+  if (!hallId) return allReports;
+  return allReports.filter(report => report.hallId === hallId);
 };
 
 export const getReportsByTechnician = (technicianId) => {
   if (!technicianId) return [];
-  return mockReports.filter(report => report.assignedTo === technicianId);
+  const allReports = getPersistedReports();
+  return allReports.filter(report => report.assignedTo === technicianId);
 };
 
 export const getReportsPendingAssignment = (hallId) => {
-  const reports = hallId ? mockReports.filter(r => r.hallId === hallId) : mockReports;
+  const allReports = getPersistedReports();
+  const reports = hallId ? allReports.filter(r => r.hallId === hallId) : allReports;
   return reports.filter(r => r.assignedTo === null && r.status === 'pending');
 };
 
 export const getStudentsByHall = (hallId) => {
-  if (!hallId) return mockStudents;
-  return mockStudents.filter(student => student.hallId === hallId);
+  const students = JSON.parse(localStorage.getItem('snapfix_students') || '[]');
+  if (!hallId) return students;
+  return students.filter(student => student.hallId === hallId);
 };
 
 export const getAdminByEmail = (email) => {
-  return admins.find(admin => admin.email === email);
+  const currentAdmins = getPersistedAdmins();
+  return currentAdmins.find(admin => admin.email.toLowerCase() === email.toLowerCase());
 };
 
 export const getTechnicianBySpecialty = (specialty) => {
-  return admins.find(admin => admin.role === 'technician' && admin.specialty === specialty);
+  const currentAdmins = getPersistedAdmins();
+  return currentAdmins.find(admin => admin.role === 'technician' && admin.specialty === specialty);
 };
 
 export const getTechnicians = () => {
-  return admins.filter(admin => admin.role === 'technician');
+  const currentAdmins = getPersistedAdmins();
+  return currentAdmins.filter(admin => admin.role === 'technician');
 };
 
 export const getTechniciansBySpecialty = (specialty) => {
-  return admins.filter(admin => admin.role === 'technician' && admin.specialty === specialty);
+  const currentAdmins = getPersistedAdmins();
+  return currentAdmins.filter(admin => admin.role === 'technician' && admin.specialty === specialty);
 };
 
+export const saveReport = (updatedReport) => {
+  const allReports = getPersistedReports();
+  const updatedReports = allReports.map(report => 
+    report.id === updatedReport.id ? { ...report, ...updatedReport } : report
+  );
+  savePersistedReports(updatedReports);
+  return updatedReports;
+};
+
+// ===== STATIC DISPLAY HELPERS =====
 export const getStatusLabel = (status) => {
   switch(status) {
     case 'pending': return 'Pending';

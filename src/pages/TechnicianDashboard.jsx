@@ -1,62 +1,68 @@
-// src/pages/Reports.jsx - COMPLETE WITH PHOTO EVIDENCE
+// src/pages/TechnicianDashboard.jsx - UNIFIED TECHNICIAN DASHBOARD
 import React, { useState, useEffect } from 'react';
 import { 
-  getReportsByHall, 
+  getReportsByTechnician, 
   getStatusLabel, 
-  getTechnicians,
-  getTechniciansBySpecialty,
-  getCategoryIcon
+  getCategoryIcon,
+  getPersistedReports,
+  savePersistedReports
 } from '../data/mockData';
-import HallSelector from '../components/HallSelector';
+import StatCard from '../components/StatCard';
 
-export default function Reports({ user }) {
+export default function TechnicianDashboard({ user }) {
   const [reports, setReports] = useState([]);
   const [filter, setFilter] = useState('all');
-  const [selectedHall, setSelectedHall] = useState(null);
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [showImageModal, setShowImageModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
-  const [selectedTechnician, setSelectedTechnician] = useState('');
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
+  
+  // Form fields for updating report
+  const [notes, setNotes] = useState('');
+  const [status, setStatus] = useState('pending');
 
   useEffect(() => {
-    const hallId = user?.role === 'super_admin' ? selectedHall : user?.hallId;
-    const hallReports = getReportsByHall(hallId);
-    setReports(hallReports);
-  }, [user, selectedHall]);
+    if (user?.id) {
+      const techReports = getReportsByTechnician(user.id);
+      setReports(techReports);
+    }
+  }, [user]);
 
-  const handleStatusChange = (id, newStatus) => {
-    setReports(reports.map(report => 
-      report.id === id ? { ...report, status: newStatus } : report
-    ));
+  const refreshReports = () => {
+    if (user?.id) {
+      const techReports = getReportsByTechnician(user.id);
+      setReports(techReports);
+    }
   };
 
-  const handleAssignReport = (report) => {
+  const handleOpenUpdate = (report) => {
     setSelectedReport(report);
-    setSelectedTechnician('');
-    setShowAssignModal(true);
+    setNotes(report.technicianNotes || '');
+    setStatus(report.status);
+    setShowUpdateModal(true);
   };
 
-  const handleAssignTechnician = () => {
-    if (!selectedTechnician || !selectedReport) return;
+  const handleSaveUpdate = () => {
+    if (!selectedReport) return;
 
-    const technician = getTechnicians().find(t => t.id === selectedTechnician);
-    
-    setReports(reports.map(report => 
+    // Update in localStorage
+    const allReports = getPersistedReports();
+    const updatedAllReports = allReports.map(report => 
       report.id === selectedReport.id 
         ? { 
             ...report, 
-            assignedTo: technician.id,
-            assignedName: technician.name,
-            assignedSpecialty: technician.specialty,
-            status: 'in-progress'
+            status, 
+            technicianNotes: notes,
+            repairDate: status === 'resolved' ? new Date().toISOString() : report.repairDate
           }
         : report
-    ));
+    );
+    savePersistedReports(updatedAllReports);
 
-    setShowAssignModal(false);
+    // Close modal and refresh page state
+    setShowUpdateModal(false);
     setSelectedReport(null);
-    setSelectedTechnician('');
+    refreshReports();
   };
 
   const handleViewImage = (imageUri) => {
@@ -64,54 +70,52 @@ export default function Reports({ user }) {
     setShowImageModal(true);
   };
 
-  const getAvailableTechnicians = (category) => {
-    return getTechniciansBySpecialty(category);
+  // Stats calculation
+  const totalReports = reports.length;
+  const pendingCount = reports.filter(r => r.status === 'pending').length;
+  const inProgressCount = reports.filter(r => r.status === 'in-progress').length;
+  const resolvedCount = reports.filter(r => r.status === 'resolved').length;
+
+  const getStatusCount = (statusTab) => {
+    if (statusTab === 'all') return reports.length;
+    return reports.filter(r => r.status === statusTab).length;
   };
 
   const filteredReports = filter === 'all' 
     ? reports 
     : reports.filter(r => r.status === filter);
 
-  const getStatusCount = (status) => {
-    if (status === 'all') return reports.length;
-    return reports.filter(r => r.status === status).length;
-  };
-
-  const showHallSelector = user?.role === 'super_admin';
-  const isAdmin = user?.role === 'hall_admin' || user?.role === 'super_admin';
-
   return (
     <>
       <div className="page-header">
         <div>
-          <h2 className="page-title">📋 Reports Management</h2>
+          <h2 className="page-title">🔧 Technician Workspace</h2>
           <p className="page-subtitle">
-            {user?.role === 'super_admin' 
-              ? 'View and manage reports from all halls'
-              : `View and manage reports for ${user?.hallName}`
-            }
+            Welcome back, <strong>{user?.name || 'Technician'}</strong>. Manage and resolve your assigned repairs.
           </p>
         </div>
         <div className="hall-badge">
-          <span className="hall-tag">
-            {user?.role === 'super_admin' ? '⭐ All Halls' : `🏛️ ${user?.hallName}`}
+          <span className="hall-tag" style={{ background: '#E0F2FE', color: '#0284C7' }}>
+            🛠️ {user?.specialty || 'General'} Technician
           </span>
         </div>
       </div>
 
-      {showHallSelector && (
-        <HallSelector 
-          selectedHall={selectedHall} 
-          onSelectHall={setSelectedHall} 
-        />
-      )}
+      {/* Stats Cards */}
+      <div className="stats-grid">
+        <StatCard label="Assigned Jobs" value={totalReports} icon="📋" />
+        <StatCard label="Pending" value={pendingCount} type="pending" icon="⏳" />
+        <StatCard label="In Progress" value={inProgressCount} type="in-progress" icon="🔄" />
+        <StatCard label="Resolved" value={resolvedCount} type="resolved" icon="✅" />
+      </div>
 
+      {/* Filters */}
       <div className="filter-group">
         <button 
           className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
           onClick={() => setFilter('all')}
         >
-          All ({getStatusCount('all')})
+          All Jobs ({getStatusCount('all')})
         </button>
         <button 
           className={`filter-btn ${filter === 'pending' ? 'active' : ''}`}
@@ -133,133 +137,101 @@ export default function Reports({ user }) {
         </button>
       </div>
 
+      {/* Job list */}
       <div className="table-container">
         <div className="table-wrapper">
           <table className="table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Student</th>
+                <th>Job ID</th>
+                <th>Student / Location</th>
                 <th>Issue</th>
-                {user?.role === 'super_admin' && <th>Hall</th>}
-                <th>Location</th>
-                <th>Category</th>
-                <th>Status</th>
-                <th>Assigned To</th>
                 <th>Priority</th>
+                <th>Status</th>
                 <th>Photo</th>
+                <th>Notes</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredReports.map((report) => (
-                <tr key={report.id}>
-                  <td style={{ fontWeight: '600', color: '#6B7280', fontSize: '13px' }}>
-                    #{report.id}
-                  </td>
-                  <td>
-                    <div style={{ fontWeight: '500' }}>{report.studentName}</div>
-                    <div style={{ fontSize: '12px', color: '#6B7280' }}>{report.studentEmail}</div>
-                  </td>
-                  <td>
-                    <div style={{ fontWeight: '500' }}>{report.issue}</div>
-                    <div style={{ fontSize: '12px', color: '#6B7280' }}>{report.category}</div>
-                  </td>
-                  {user?.role === 'super_admin' && <td>{report.hallName}</td>}
-                  <td style={{ fontSize: '13px' }}>{report.location}</td>
-                  <td>
-                    <span style={{ 
-                      background: '#F3F4F6', 
-                      padding: '2px 10px', 
-                      borderRadius: '4px',
-                      fontSize: '12px'
-                    }}>
-                      {getCategoryIcon(report.category)} {report.category}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`badge badge-${report.status}`}>
-                      {getStatusLabel(report.status)}
-                    </span>
-                  </td>
-                  <td>
-                    {report.assignedName ? (
-                      <span style={{ 
-                        background: '#DBEAFE', 
-                        padding: '2px 8px', 
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        color: '#1E40AF'
-                      }}>
-                        {report.assignedName}
-                      </span>
-                    ) : (
-                      <span style={{ color: '#6B7280', fontSize: '12px' }}>Not assigned</span>
-                    )}
-                  </td>
-                  <td>
-                    <span style={{ 
-                      color: report.priority === 'high' ? '#DC2626' : 
-                             report.priority === 'medium' ? '#F59E0B' : '#10B981',
-                      fontWeight: '500',
-                      fontSize: '13px'
-                    }}>
-                      {report.priority}
-                    </span>
-                  </td>
-                  <td>
-                    {report.imageUri ? (
-                      <button
-                        className="btn btn-secondary"
-                        style={{ padding: '4px 8px', fontSize: '12px' }}
-                        onClick={() => handleViewImage(report.imageUri)}
-                      >
-                        📷 View
-                      </button>
-                    ) : (
-                      <span style={{ color: '#9CA3AF', fontSize: '12px' }}>No photo</span>
-                    )}
-                  </td>
-                  <td>
-                    {isAdmin && report.status === 'pending' && !report.assignedTo && (
-                      <button 
-                        className="btn btn-primary" 
-                        style={{ padding: '4px 12px', fontSize: '12px', marginRight: '4px' }}
-                        onClick={() => handleAssignReport(report)}
-                      >
-                        Assign
-                      </button>
-                    )}
-                    {isAdmin && report.status !== 'resolved' && report.assignedTo && (
-                      <select
-                        className="status-select"
-                        value={report.status}
-                        onChange={(e) => handleStatusChange(report.id, e.target.value)}
-                        style={{ marginRight: '4px' }}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
-                      </select>
-                    )}
-                    {!report.assignedTo && report.status === 'pending' && (
-                      <span style={{ fontSize: '11px', color: '#6B7280' }}>
-                        Awaiting assignment
-                      </span>
-                    )}
-                    {report.status === 'resolved' && (
-                      <span style={{ fontSize: '11px', color: '#10B981' }}>✅ Done</span>
-                    )}
+              {filteredReports.length === 0 ? (
+                <tr>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '48px', color: '#6B7280' }}>
+                    No assigned reports found for this status.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredReports.map((report) => (
+                  <tr key={report.id}>
+                    <td style={{ fontWeight: '600', color: '#6B7280', fontSize: '13px' }}>
+                      #{report.id}
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: '500' }}>{report.studentName}</div>
+                      <div style={{ fontSize: '12px', color: '#4B5563', fontWeight: '500' }}>📍 {report.location}</div>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: '600', color: '#111827' }}>
+                        {getCategoryIcon(report.category)} {report.issue}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                        {report.description.length > 50 ? report.description.substring(0, 50) + '...' : report.description}
+                      </div>
+                    </td>
+                    <td>
+                      <span style={{ 
+                        color: report.priority === 'high' ? '#DC2626' : 
+                               report.priority === 'medium' ? '#F59E0B' : '#10B981',
+                        fontWeight: '600',
+                        fontSize: '13px'
+                      }}>
+                        {report.priority.toUpperCase()}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`badge badge-${report.status}`}>
+                        {getStatusLabel(report.status)}
+                      </span>
+                    </td>
+                    <td>
+                      {report.imageUri ? (
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: '4px 8px', fontSize: '12px' }}
+                          onClick={() => handleViewImage(report.imageUri)}
+                        >
+                          📷 View
+                        </button>
+                      ) : (
+                        <span style={{ color: '#9CA3AF', fontSize: '12px' }}>No photo</span>
+                      )}
+                    </td>
+                    <td style={{ fontSize: '13px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {report.technicianNotes ? (
+                        <span style={{ color: '#374151', fontStyle: 'italic' }}>{report.technicianNotes}</span>
+                      ) : (
+                        <span style={{ color: '#9CA3AF', fontSize: '11px' }}>No notes added</span>
+                      )}
+                    </td>
+                    <td>
+                      <button 
+                        className="btn btn-primary" 
+                        style={{ padding: '6px 12px', fontSize: '13px' }}
+                        onClick={() => handleOpenUpdate(report)}
+                      >
+                        ⚡ Update Job
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Assign Modal */}
-      {showAssignModal && selectedReport && (
+      {/* ===== UPDATE MODAL ===== */}
+      {showUpdateModal && selectedReport && (
         <div style={{
           position: 'fixed',
           inset: 0,
@@ -275,45 +247,60 @@ export default function Reports({ user }) {
             borderRadius: '16px',
             padding: '32px',
             width: '100%',
-            maxWidth: '500px',
+            maxWidth: '550px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
             boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
           }}>
-            <h2 style={{ marginBottom: '16px', fontSize: '22px', fontWeight: '700' }}>
-              📋 Assign Report #{selectedReport.id}
+            <h2 style={{ marginBottom: '16px', fontSize: '22px', fontWeight: '700', color: '#111827' }}>
+              🔧 Update Job #{selectedReport.id}
             </h2>
 
+            {/* Evidence Image */}
             {selectedReport.imageUri && (
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600' }}>Evidence Photo</label>
+                <label style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
+                  Student Photo Evidence (Click to zoom)
+                </label>
                 <img 
                   src={selectedReport.imageUri} 
                   alt="Evidence" 
                   style={{ 
                     width: '100%', 
-                    height: '150px', 
+                    height: '180px', 
                     objectFit: 'cover',
                     borderRadius: '8px',
-                    marginTop: '4px',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    border: '1px solid #E5E7EB'
                   }}
                   onClick={() => handleViewImage(selectedReport.imageUri)}
                 />
               </div>
             )}
 
-            <div style={{ marginBottom: '16px' }}>
-              <p><strong>Issue:</strong> {selectedReport.issue}</p>
-              <p><strong>Category:</strong> {selectedReport.category}</p>
-              <p><strong>Location:</strong> {selectedReport.location}</p>
-              <p><strong>Student:</strong> {selectedReport.studentName}</p>
-              <p><strong>Description:</strong> {selectedReport.description}</p>
+            {/* Description Details */}
+            <div style={{ 
+              background: '#F9FAFB', 
+              padding: '16px', 
+              borderRadius: '8px', 
+              fontSize: '14px', 
+              marginBottom: '20px', 
+              border: '1px solid #F3F4F6' 
+            }}>
+              <p style={{ margin: '0 0 6px 0' }}><strong>Location:</strong> {selectedReport.location}</p>
+              <p style={{ margin: '0 0 6px 0' }}><strong>Student:</strong> {selectedReport.studentName} ({selectedReport.studentEmail})</p>
+              <p style={{ margin: '0 0 6px 0' }}><strong>Reported Issue:</strong> {selectedReport.issue}</p>
+              <p style={{ margin: '0', color: '#4B5563', background: '#FFFFFF', padding: '10px', borderRadius: '4px', border: '1px solid #E5E7EB', marginTop: '6px', fontSize: '13px' }}>
+                <strong>Student Description:</strong> "{selectedReport.description}"
+              </p>
             </div>
 
+            {/* Edit Fields */}
             <div className="form-group">
-              <label>Select Technician ({selectedReport.category})</label>
+              <label>Update Status</label>
               <select
-                value={selectedTechnician}
-                onChange={(e) => setSelectedTechnician(e.target.value)}
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
@@ -324,31 +311,47 @@ export default function Reports({ user }) {
                   background: 'white'
                 }}
               >
-                <option value="">Select a technician...</option>
-                {getAvailableTechnicians(selectedReport.category).map((tech) => (
-                  <option key={tech.id} value={tech.id}>
-                    {tech.name} ({tech.specialty})
-                  </option>
-                ))}
+                <option value="pending">Pending</option>
+                <option value="in-progress">In Progress</option>
+                <option value="resolved">Resolved</option>
               </select>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+            <div className="form-group">
+              <label>Technician Notes</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Enter actions taken, parts used, or updates for the administration..."
+                rows="4"
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  resize: 'vertical',
+                  fontFamily: 'inherit'
+                }}
+              />
+            </div>
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
               <button
                 className="btn btn-primary"
-                onClick={handleAssignTechnician}
-                disabled={!selectedTechnician}
-                style={{ 
-                  flex: 1,
-                  opacity: !selectedTechnician ? 0.5 : 1,
-                  cursor: !selectedTechnician ? 'not-allowed' : 'pointer'
-                }}
+                onClick={handleSaveUpdate}
+                style={{ flex: 1 }}
               >
-                Assign
+                Save Updates
               </button>
               <button
                 className="btn btn-secondary"
-                onClick={() => setShowAssignModal(false)}
+                onClick={() => {
+                  setShowUpdateModal(false);
+                  setSelectedReport(null);
+                }}
                 style={{ flex: 1 }}
               >
                 Cancel
@@ -358,7 +361,7 @@ export default function Reports({ user }) {
         </div>
       )}
 
-      {/* Image Modal */}
+      {/* ===== IMAGE MODAL ===== */}
       {showImageModal && selectedImage && (
         <div style={{
           position: 'fixed',
@@ -367,7 +370,7 @@ export default function Reports({ user }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 9999,
+          zIndex: 99999,
           padding: '16px'
         }}>
           <div style={{
@@ -379,7 +382,7 @@ export default function Reports({ user }) {
             boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '600' }}>📷 Evidence Photo</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>📷 Evidence Photo</h3>
               <button
                 className="btn btn-secondary"
                 onClick={() => setShowImageModal(false)}
@@ -394,6 +397,8 @@ export default function Reports({ user }) {
               style={{ 
                 width: '100%', 
                 height: 'auto', 
+                maxHeight: '70vh',
+                objectFit: 'contain',
                 borderRadius: '8px'
               }}
             />
