@@ -7,17 +7,52 @@ import {
   savePersistedAdmins 
 } from '../data/mockData';
 
+// Copy helper that works outside secure contexts (e.g. http:// on a LAN IP),
+// where navigator.clipboard is undefined. Falls back to a hidden textarea.
+function copyToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text)
+      .then(() => alert('Copied to clipboard!'))
+      .catch(() => fallbackCopy(text));
+    return;
+  }
+  fallbackCopy(text);
+}
+
+function fallbackCopy(text) {
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    alert(ok ? 'Copied to clipboard!' : 'Could not copy. Please copy manually.');
+  } catch {
+    alert('Could not copy. Please copy manually.');
+  }
+}
+
 export default function Staff({ user }) {
+  // Super admins manage every hall and can create hall admins. Hall admins are
+  // scoped to their own hall and may only create/manage technicians there.
+  const isSuperAdmin = user?.role === 'super_admin';
+
   const [staff, setStaff] = useState(() => getPersistedStaff());
   const [showModal, setShowModal] = useState(false);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [generatedCredentials, setGeneratedCredentials] = useState(null);
   const [editingStaff, setEditingStaff] = useState(null);
-  
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    role: 'Electrical Technician',
+    role: 'technician',
+    hallId: '1',
+    specialty: 'electrical',
     status: 'active'
   });
 
@@ -27,7 +62,9 @@ export default function Staff({ user }) {
     setFormData({
       name: '',
       email: '',
-      role: 'Electrical Technician',
+      role: 'technician',
+      hallId: user?.hallId || '1',
+      specialty: 'electrical',
       status: 'active'
     });
     setShowModal(true);
@@ -36,10 +73,19 @@ export default function Staff({ user }) {
   // ===== EDIT STAFF =====
   const handleEditStaff = (staffMember) => {
     setEditingStaff(staffMember);
+    const currentAdmins = getPersistedAdmins();
+    const adminObj = currentAdmins.find(a => a.email.toLowerCase() === staffMember.email.toLowerCase()) || {};
+    
+    const specialty = adminObj.role === 'hall_admin'
+      ? 'hall-admin'
+      : (adminObj.specialty || 'electrical');
+
     setFormData({
       name: staffMember.name,
       email: staffMember.email,
-      role: staffMember.role,
+      role: adminObj.role || 'technician',
+      hallId: adminObj.hallId || '1',
+      specialty,
       status: staffMember.status
     });
     setShowModal(true);
@@ -69,17 +115,67 @@ export default function Staff({ user }) {
       return;
     }
 
-    // Auto-generate email if left blank
-    let email = formData.email.trim();
-    if (!email) {
-      email = formData.name.toLowerCase().trim().replace(/\s+/g, '.') + '@snapfix.com';
+    // Only the super admin can create hall admins; hall admins manage technicians only.
+    if (formData.specialty === 'hall-admin' && !isSuperAdmin) {
+      alert('Only the Super Admin can create Hall Admins. You can add technicians for your hall.');
+      return;
     }
+
+    const hallNames = {
+      '1': 'Unity Hall',
+      '2': 'Independence Hall',
+      '3': 'Republic Hall',
+      '4': 'Africa Hall',
+      '5': 'University Hall',
+      '6': 'Queen Elizabeth II Hall'
+    };
+
+    const hallCodes = {
+      '1': 'unity',
+      '2': 'independence',
+      '3': 'republic',
+      '4': 'africa',
+      '5': 'university',
+      '6': 'queenshall'
+    };
+
+    const specialties = {
+      'hall-admin': { label: 'Hall Admin', icon: '🏛️' },
+      'electrical': { label: 'Electrical', icon: '⚡' },
+      'plumbing': { label: 'Plumbing', icon: '🔧' },
+      'carpentry': { label: 'Carpentry', icon: '🪚' },
+      'masonry': { label: 'Masonry', icon: '🧱' }
+    };
+
+    const hallName = hallNames[formData.hallId] || 'All Halls';
+    const hallCode = hallCodes[formData.hallId] || 'hall';
+    const specInfo = specialties[formData.specialty] || { label: 'General', icon: '🔧' };
+
+    // "Hall Admin" is a role, not a technician specialty. When selected we
+    // create a real hall_admin account (Admin Portal) instead of a technician.
+    const isHallAdmin = formData.specialty === 'hall-admin';
+    const staffRole = isHallAdmin ? 'Hall Admin' : `${specInfo.label} Technician`;
+    const loginRole = isHallAdmin ? 'hall_admin' : 'technician';
+    const loginPortal = isHallAdmin ? 'Admin Portal' : 'Technician Portal';
+
+    // Auto-generate email: [firstname].[lastname]@[hallcode].snapfix.com
+    // If no surname is given, fall back to the person's role/specialty.
+    const nameParts = formData.name.trim().toLowerCase().split(/\s+/);
+    const firstName = nameParts[0] || 'staff';
+    const lastName = nameParts.slice(1).join('.') || formData.specialty;
+    const email = `${firstName}.${lastName}@${hallCode}.snapfix.com`;
 
     if (editingStaff) {
       // Update existing staff
-      const updatedStaff = staff.map(member => 
-        member.id === editingStaff.id 
-          ? { ...member, name: formData.name, email, role: formData.role, status: formData.status }
+      const updatedStaff = staff.map(member =>
+        member.id === editingStaff.id
+          ? {
+              ...member,
+              name: formData.name,
+              email,
+              role: staffRole,
+              status: formData.status
+            }
           : member
       );
       setStaff(updatedStaff);
@@ -89,30 +185,16 @@ export default function Staff({ user }) {
       const allAdmins = getPersistedAdmins();
       const updatedAdmins = allAdmins.map(admin => {
         if (admin.email.toLowerCase() === editingStaff.email.toLowerCase()) {
-          let role = 'technician';
-          let specialty = null;
-          let specialtyIcon = null;
-
-          if (formData.role === 'Admin') {
-            role = 'hall_admin';
-          } else if (formData.role === 'Supervisor') {
-            role = 'supervisor';
-          } else {
-            // Electrical Technician, etc.
-            specialty = formData.role.replace(' Technician', '');
-            if (specialty === 'Electrical') specialtyIcon = '⚡';
-            else if (specialty === 'Plumbing') specialtyIcon = '🔧';
-            else if (specialty === 'Carpentry') specialtyIcon = '🪚';
-            else if (specialty === 'Masonry') specialtyIcon = '🧱';
-          }
-
           return {
             ...admin,
             name: formData.name,
-            email: email,
-            role,
-            specialty,
-            specialtyIcon
+            email,
+            role: loginRole,
+            hallId: formData.hallId,
+            hallName,
+            specialty: isHallAdmin ? null : formData.specialty,
+            specialtyLabel: isHallAdmin ? null : specInfo.label,
+            specialtyIcon: isHallAdmin ? null : specInfo.icon
           };
         }
         return admin;
@@ -120,15 +202,24 @@ export default function Staff({ user }) {
       savePersistedAdmins(updatedAdmins);
       setShowModal(false);
     } else {
-      // Add new staff - Simulate backend credentials generation
-      const generatedPassword = 'sf' + Math.floor(1000 + Math.random() * 9000);
-      
-      const newStaffId = Date.now().toString();
+      // Add new staff
+      // Generate 10-character password with letters, numbers, and symbols
+      const generateRandomPassword = () => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+~}{[]:;?><';
+        let password = '';
+        for (let i = 0; i < 10; i++) {
+          password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return password;
+      };
+      const generatedPassword = generateRandomPassword();
+      const newStaffId = 't' + Date.now().toString();
+
       const newStaffMember = {
         id: newStaffId,
         name: formData.name,
-        email: email,
-        role: formData.role,
+        email,
+        role: staffRole,
         status: formData.status
       };
 
@@ -136,33 +227,20 @@ export default function Staff({ user }) {
       setStaff(updatedStaff);
       savePersistedStaff(updatedStaff);
 
-      // Map Role to admins schema for authentication
-      let role = 'technician';
-      let specialty = null;
-      let specialtyIcon = null;
-
-      if (formData.role === 'Admin') {
-        role = 'hall_admin';
-      } else if (formData.role === 'Supervisor') {
-        role = 'supervisor';
-      } else {
-        specialty = formData.role.replace(' Technician', '');
-        if (specialty === 'Electrical') specialtyIcon = '⚡';
-        else if (specialty === 'Plumbing') specialtyIcon = '🔧';
-        else if (specialty === 'Carpentry') specialtyIcon = '🪚';
-        else if (specialty === 'Masonry') specialtyIcon = '🧱';
-      }
-
       const newAdminObj = {
-        id: 'admin_' + newStaffId,
-        email: email,
+        id: newStaffId,
+        email,
         password: generatedPassword,
         name: formData.name,
-        role,
-        hallId: user?.hallId || null,
-        hallName: user?.hallName || 'All Halls',
-        specialty,
-        specialtyIcon
+        role: loginRole,
+        hallId: formData.hallId,
+        hallName,
+        // Technician specialty fields are omitted for hall admins.
+        ...(isHallAdmin ? {} : {
+          specialty: formData.specialty,
+          specialtyLabel: specInfo.label,
+          specialtyIcon: specInfo.icon
+        })
       };
 
       const currentAdmins = getPersistedAdmins();
@@ -172,9 +250,10 @@ export default function Staff({ user }) {
       // Set credentials info to display to user
       setGeneratedCredentials({
         name: formData.name,
-        role: formData.role,
-        email: email,
-        password: generatedPassword
+        role: staffRole,
+        email,
+        password: generatedPassword,
+        portal: loginPortal
       });
 
       setShowModal(false);
@@ -192,6 +271,14 @@ export default function Staff({ user }) {
     setStaff(updatedStaff);
     savePersistedStaff(updatedStaff);
   };
+
+  const currentAdmins = getPersistedAdmins();
+  const displayedStaff = staff.filter(member => {
+    if (isSuperAdmin) return true; // Super admin sees all staff
+    const adminObj = currentAdmins.find(a => a.email.toLowerCase() === member.email.toLowerCase());
+    // Hall admins manage only the technicians in their own hall.
+    return adminObj?.hallId === user.hallId && adminObj?.role === 'technician';
+  });
 
   return (
     <>
@@ -226,21 +313,21 @@ export default function Staff({ user }) {
               </tr>
             </thead>
             <tbody>
-              {staff.length === 0 ? (
+              {displayedStaff.length === 0 ? (
                 <tr>
                   <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
                     No staff members found. Click "Add Staff" to add one.
                   </td>
                 </tr>
               ) : (
-                staff.map((member) => (
+                displayedStaff.map((member) => (
                   <tr key={member.id}>
                     <td style={{ fontWeight: '500' }}>{member.name}</td>
                     <td>{member.email}</td>
                     <td>
-                      <span style={{ 
-                        background: member.role === 'Admin' ? '#ECFDF5' : '#DBEAFE',
-                        color: member.role === 'Admin' ? '#065F46' : '#1E40AF',
+                      <span style={{
+                        background: member.role?.includes('Admin') ? '#ECFDF5' : '#DBEAFE',
+                        color: member.role?.includes('Admin') ? '#065F46' : '#1E40AF',
                         padding: '2px 10px',
                         borderRadius: '4px',
                         fontSize: '12px',
@@ -326,31 +413,36 @@ export default function Staff({ user }) {
             </div>
 
             <div className="form-group">
-              <label>Email Address (Optional)</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="Leave blank to auto-generate"
+              <label>Hall *</label>
+              <select
+                value={formData.hallId}
+                onChange={(e) => setFormData({ ...formData, hallId: e.target.value })}
+                disabled={!!user?.hallId}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
                   border: '1px solid #D1D5DB',
                   borderRadius: '6px',
                   fontSize: '14px',
-                  outline: 'none'
+                  outline: 'none',
+                  background: !!user?.hallId ? '#F3F4F6' : 'white',
+                  cursor: !!user?.hallId ? 'not-allowed' : 'default'
                 }}
-              />
-              <span style={{ fontSize: '11px', color: '#9CA3AF' }}>
-                If left blank, email will be generated based on full name (e.g. john.doe@snapfix.com).
-              </span>
+              >
+                <option value="1">Unity Hall</option>
+                <option value="2">Independence Hall</option>
+                <option value="3">Republic Hall</option>
+                <option value="4">Africa Hall</option>
+                <option value="5">University Hall</option>
+                <option value="6">Queen Elizabeth II Hall</option>
+              </select>
             </div>
 
             <div className="form-group">
-              <label>Role</label>
+              <label>Role / Specialty *</label>
               <select
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                value={formData.specialty}
+                onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
@@ -361,10 +453,11 @@ export default function Staff({ user }) {
                   background: 'white'
                 }}
               >
-                <option value="Electrical Technician">Electrical Technician</option>
-                <option value="Plumbing Technician">Plumbing Technician</option>
-                <option value="Carpentry Technician">Carpentry Technician</option>
-                <option value="Masonry Technician">Masonry Technician</option>
+                {isSuperAdmin && <option value="hall-admin">Hall Admin</option>}
+                <option value="electrical">Electrical</option>
+                <option value="plumbing">Plumbing</option>
+                <option value="carpentry">Carpentry</option>
+                <option value="masonry">Masonry</option>
               </select>
             </div>
 
@@ -471,7 +564,7 @@ export default function Staff({ user }) {
                   {generatedCredentials.email}
                 </span>
               </div>
-              <div>
+              <div style={{ marginBottom: '12px' }}>
                 <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600', display: 'block', textTransform: 'uppercase' }}>
                   Temporary Password
                 </span>
@@ -479,15 +572,24 @@ export default function Staff({ user }) {
                   {generatedCredentials.password}
                 </span>
               </div>
+              {generatedCredentials.portal && (
+                <div>
+                  <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600', display: 'block', textTransform: 'uppercase' }}>
+                    Sign In Via
+                  </span>
+                  <span style={{ fontSize: '15px', color: '#1F2937', fontWeight: '600' }}>
+                    {generatedCredentials.portal}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button
                 className="btn btn-primary"
                 onClick={() => {
-                  const copyText = `Name: ${generatedCredentials.name}\nEmail: ${generatedCredentials.email}\nPassword: ${generatedCredentials.password}`;
-                  navigator.clipboard.writeText(copyText);
-                  alert('Copied to clipboard!');
+                  const copyText = `Name: ${generatedCredentials.name}\nRole: ${generatedCredentials.role}\nEmail: ${generatedCredentials.email}\nPassword: ${generatedCredentials.password}${generatedCredentials.portal ? `\nSign in via: ${generatedCredentials.portal}` : ''}`;
+                  copyToClipboard(copyText);
                 }}
                 style={{ width: '100%' }}
               >

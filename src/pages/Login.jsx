@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { getAdminByEmail } from '../data/mockData';
 
 export default function Login({ setUser }) {
@@ -37,6 +37,8 @@ export default function Login({ setUser }) {
           <p>Sign in to manage your hall reports</p>
         </div>
 
+
+
         <div className="login-demo">
           <p><strong>🔑 Demo Credentials:</strong></p>
           <div className="demo-grid">
@@ -44,47 +46,10 @@ export default function Login({ setUser }) {
               <span>⭐ Super Admin:</span>
               <code>admin@snapfix.com / admin123</code>
             </div>
-            <div className="demo-item">
-              <span>🏛️ Unity Hall:</span>
-              <code>unity@snapfix.com / unity123</code>
-            </div>
-            <div className="demo-item">
-              <span>🏛️ Independence Hall:</span>
-              <code>independence@snapfix.com / independence123</code>
-            </div>
-            <div className="demo-item">
-              <span>🏛️ Republic Hall:</span>
-              <code>republic@snapfix.com / republic123</code>
-            </div>
-            <div className="demo-item">
-              <span>🏛️ Africa Hall:</span>
-              <code>africa@snapfix.com / africa123</code>
-            </div>
-            <div className="demo-item">
-              <span>🏛️ University Hall:</span>
-              <code>universityhall@snapfix.com / university123</code>
-            </div>
-            <div className="demo-item">
-              <span>🏛️ Queen Elizabeth II Hall:</span>
-              <code>queenshall@snapfix.com / queenshall123</code>
-            </div>
-            <div className="demo-item technician">
-              <span>⚡ Electrical Technician:</span>
-              <code>kwaku@snapfix.com / kwaku123</code>
-            </div>
-            <div className="demo-item technician">
-              <span>🔧 Plumbing Technician:</span>
-              <code>osei@snapfix.com / osei123</code>
-            </div>
-            <div className="demo-item technician">
-              <span>🪚 Carpentry Technician:</span>
-              <code>abena@snapfix.com / abena123</code>
-            </div>
-            <div className="demo-item technician">
-              <span>🧱 Masonry Technician:</span>
-              <code>kofi@snapfix.com / kofi123</code>
-            </div>
           </div>
+          <p style={{ marginTop: '12px', fontSize: '12px', color: '#6B7280', lineHeight: '1.5' }}>
+            🏛️ Hall admin accounts are created by the Super Admin under Staff Management. Use the credentials generated there to sign in.
+          </p>
         </div>
 
         {error && <div className="login-error">{error}</div>}
@@ -116,6 +81,12 @@ export default function Login({ setUser }) {
             Sign In
           </button>
         </form>
+
+        <div style={{ marginTop: '20px', textAlign: 'center' }}>
+          <Link to="/tech-login" style={{ color: '#3B82F6', fontWeight: '500', textDecoration: 'none', fontSize: '13px' }}>
+            🔧 Technician? Go to Technician Portal →
+          </Link>
+        </div>
       </div>
     </div>
   );

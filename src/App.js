@@ -15,6 +15,7 @@ import Staff from './pages/Staff';
 import Locations from './pages/Locations';
 import Settings from './pages/Settings';
 import TechnicianDashboard from './pages/TechnicianDashboard';
+import TechLogin from './pages/TechLogin';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -36,7 +37,12 @@ function App() {
   };
 
   const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-    if (!user) return <Navigate to="/login" />;
+    if (!user) {
+      if (allowedRoles.includes('technician')) {
+        return <Navigate to="/tech-login" />;
+      }
+      return <Navigate to="/login" />;
+    }
     if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
       if (user.role === 'technician') return <Navigate to="/technician" />;
       return <Navigate to="/" />;
@@ -48,6 +54,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<Login setUser={setUser} />} />
+        <Route path="/tech-login" element={<TechLogin setUser={setUser} />} />
         
         {/* Technician Route */}
         <Route 

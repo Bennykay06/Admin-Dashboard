@@ -10,117 +10,22 @@ const initialHalls = [
 ];
 
 // ===== INITIAL ADMINS DATA =====
+// NOTE: Hall admins are NOT seeded here. They must be created by the Super
+// Admin via Staff Management. The old hardcoded hall-admin demo logins
+// (e.g. unity@snapfix.com) have been removed and are revoked on load.
 const initialAdmins = [
-  // Hall-Specific Admins
-  { 
-    id: '1', 
-    email: 'unity@snapfix.com', 
-    password: 'unity123', 
-    name: 'Unity Admin',
-    role: 'hall_admin',
-    hallId: '1',
-    hallName: 'Unity Hall'
-  },
-  { 
-    id: '2', 
-    email: 'independence@snapfix.com', 
-    password: 'independence123', 
-    name: 'Independence Admin',
-    role: 'hall_admin',
-    hallId: '2',
-    hallName: 'Independence Hall'
-  },
-  { 
-    id: '3', 
-    email: 'republic@snapfix.com', 
-    password: 'republic123', 
-    name: 'Republic Admin',
-    role: 'hall_admin',
-    hallId: '3',
-    hallName: 'Republic Hall'
-  },
-  { 
-    id: '4', 
-    email: 'africa@snapfix.com', 
-    password: 'africa123', 
-    name: 'Africa Admin',
-    role: 'hall_admin',
-    hallId: '4',
-    hallName: 'Africa Hall'
-  },
-  { 
-    id: '5', 
-    email: 'universityhall@snapfix.com', 
-    password: 'university123', 
-    name: 'University Admin',
-    role: 'hall_admin',
-    hallId: '5',
-    hallName: 'University Hall'
-  },
-  { 
-    id: '6', 
-    email: 'queenshall@snapfix.com', 
-    password: 'queenshall123', 
-    name: 'Queen Elizabeth II Admin',
-    role: 'hall_admin',
-    hallId: '6',
-    hallName: 'Queen Elizabeth II Hall'
-  },
-  // Super Admin
-  { 
-    id: '7', 
-    email: 'admin@snapfix.com', 
-    password: 'admin123', 
+  // Super Admin (the only bootstrap admin account)
+  {
+    id: '7',
+    email: 'admin@snapfix.com',
+    password: 'admin123',
     name: 'Super Admin',
     role: 'super_admin',
     hallId: null,
     hallName: 'All Halls'
-  },
-  // ===== TECHNICIANS =====
-  { 
-    id: '8', 
-    email: 'kwaku@snapfix.com', 
-    password: 'kwaku123', 
-    name: 'Kwaku Mensah',
-    role: 'technician',
-    hallId: null,
-    hallName: 'All Halls',
-    specialty: 'Electrical',
-    specialtyIcon: '⚡'
-  },
-  { 
-    id: '9', 
-    email: 'osei@snapfix.com', 
-    password: 'osei123', 
-    name: 'Osei Tutu',
-    role: 'technician',
-    hallId: null,
-    hallName: 'All Halls',
-    specialty: 'Plumbing',
-    specialtyIcon: '🔧'
-  },
-  { 
-    id: '10', 
-    email: 'abena@snapfix.com', 
-    password: 'abena123', 
-    name: 'Abena Oforiwa',
-    role: 'technician',
-    hallId: null,
-    hallName: 'All Halls',
-    specialty: 'Carpentry',
-    specialtyIcon: '🪚'
-  },
-  { 
-    id: '11', 
-    email: 'kofi@snapfix.com', 
-    password: 'kofi123', 
-    name: 'Kofi Asare',
-    role: 'technician',
-    hallId: null,
-    hallName: 'All Halls',
-    specialty: 'Masonry',
-    specialtyIcon: '🧱'
-  },
+  }
+  // No technicians are seeded — they are created by an administrator via
+  // Staff Management, and only those generated credentials can log in.
 ];
 
 // ===== INITIAL STUDENTS DATA =====
@@ -135,12 +40,8 @@ const initialStudents = [
 ];
 
 // ===== INITIAL STAFF DATA =====
-const initialStaff = [
-  { id: '1', name: 'Mr. Osei Tutu', role: 'Plumbing Technician', email: 'osei@snapfix.com', status: 'active' },
-  { id: '2', name: 'Mr. Kwaku Mensah', role: 'Electrical Technician', email: 'kwaku@snapfix.com', status: 'active' },
-  { id: '3', name: 'Ms. Abena Oforiwa', role: 'Carpentry Technician', email: 'abena@snapfix.com', status: 'active' },
-  { id: '4', name: 'Mr. Kofi Asare', role: 'Masonry Technician', email: 'kofi@snapfix.com', status: 'active' },
-];
+// No staff are seeded — an administrator adds them via Staff Management.
+const initialStaff = [];
 
 // ===== INITIAL REPORTS (WITH PRE-ASSIGNMENTS) =====
 const initialReports = [
@@ -158,9 +59,9 @@ const initialReports = [
     timestamp: '2024-06-20T10:30:00Z',
     description: 'The fluorescent tube in my room has been flickering for 2 days and now completely dead.',
     imageUri: 'https://images.unsplash.com/photo-1550985616-10810253b84d?w=400&q=80',
-    assignedTo: '8', // Assigned to Kwaku
-    assignedName: 'Kwaku Mensah',
-    assignedSpecialty: 'Electrical',
+    assignedTo: null,
+    assignedName: null,
+    assignedSpecialty: null,
     technicianNotes: '',
     repairDate: null
   },
@@ -173,15 +74,15 @@ const initialReports = [
     hallId: '2',
     hallName: 'Independence Hall',
     location: 'Independence Hall, Floor 1, Room 104',
-    status: 'in-progress',
+    status: 'pending',
     priority: 'medium',
     timestamp: '2024-06-19T14:20:00Z',
     description: 'The bathroom tap is leaking constantly and wasting water.',
     imageUri: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&q=80',
-    assignedTo: '9', // Assigned to Osei
-    assignedName: 'Osei Tutu',
-    assignedSpecialty: 'Plumbing',
-    technicianNotes: 'Investigated the leak. Needs a replacement washer.',
+    assignedTo: null,
+    assignedName: null,
+    assignedSpecialty: null,
+    technicianNotes: '',
     repairDate: null
   },
   {
@@ -233,15 +134,15 @@ const initialReports = [
     hallId: '1',
     hallName: 'Unity Hall',
     location: 'Unity Hall, Floor 4, Room 410',
-    status: 'in-progress',
+    status: 'pending',
     priority: 'high',
     timestamp: '2024-06-16T11:00:00Z',
     description: 'The wall socket is sparking when I plug in my charger.',
     imageUri: 'https://images.unsplash.com/photo-1621905252507-b354bc25edac?w=400&q=80',
-    assignedTo: '8', // Assigned to Kwaku
-    assignedName: 'Kwaku Mensah',
-    assignedSpecialty: 'Electrical',
-    technicianNotes: 'Scheduled repair for Thursday afternoon.',
+    assignedTo: null,
+    assignedName: null,
+    assignedSpecialty: null,
+    technicianNotes: '',
     repairDate: null
   },
   {
@@ -286,9 +187,23 @@ const initialReports = [
   },
 ];
 
+// Retired demo accounts. These are no longer valid logins — hall admins and
+// technicians must be created by an administrator via Staff Management. Any of
+// these still sitting in a browser's localStorage are removed on load.
+const REVOKED_SEED_EMAILS = [
+  'unity@snapfix.com',
+  'independence@snapfix.com',
+  'republic@snapfix.com',
+  'africa@snapfix.com',
+  'universityhall@snapfix.com',
+  'queenshall@snapfix.com',
+  'kwame.mensah@unity.snapfix.com',
+];
+
 // ===== LOCALSTORAGE SYNCHRONIZATION =====
 const initLocalStorage = () => {
   if (typeof window !== 'undefined') {
+    // Seed each store once. Generated accounts/data are never overwritten.
     if (!localStorage.getItem('snapfix_halls')) {
       localStorage.setItem('snapfix_halls', JSON.stringify(initialHalls));
     }
@@ -303,6 +218,46 @@ const initLocalStorage = () => {
     }
     if (!localStorage.getItem('snapfix_reports')) {
       localStorage.setItem('snapfix_reports', JSON.stringify(initialReports));
+    }
+
+    // Revoke retired demo accounts (old hall admins + the demo technician)
+    // from the login and staff lists, preserving the super admin and any
+    // administrator-generated accounts.
+    try {
+      const admins = JSON.parse(localStorage.getItem('snapfix_admins') || '[]');
+      const cleanedAdmins = admins.filter(
+        a => !REVOKED_SEED_EMAILS.includes((a.email || '').toLowerCase())
+      );
+      if (cleanedAdmins.length !== admins.length) {
+        localStorage.setItem('snapfix_admins', JSON.stringify(cleanedAdmins));
+      }
+
+      const staff = JSON.parse(localStorage.getItem('snapfix_staff') || '[]');
+      const cleanedStaff = staff.filter(
+        s => !REVOKED_SEED_EMAILS.includes((s.email || '').toLowerCase())
+      );
+      if (cleanedStaff.length !== staff.length) {
+        localStorage.setItem('snapfix_staff', JSON.stringify(cleanedStaff));
+      }
+
+      // Unassign reports still pointing at a technician that no longer exists.
+      const validTechIds = new Set(
+        cleanedAdmins.filter(a => a.role === 'technician').map(a => a.id)
+      );
+      const reports = JSON.parse(localStorage.getItem('snapfix_reports') || '[]');
+      let reportsChanged = false;
+      const cleanedReports = reports.map(r => {
+        if (r.assignedTo && !validTechIds.has(r.assignedTo)) {
+          reportsChanged = true;
+          return { ...r, assignedTo: null, assignedName: null, assignedSpecialty: null };
+        }
+        return r;
+      });
+      if (reportsChanged) {
+        localStorage.setItem('snapfix_reports', JSON.stringify(cleanedReports));
+      }
+    } catch (e) {
+      // ignore — malformed stores are left as-is
     }
   }
 };
@@ -361,7 +316,15 @@ export const getReportsByHall = (hallId) => {
 export const getReportsByTechnician = (technicianId) => {
   if (!technicianId) return [];
   const allReports = getPersistedReports();
-  return allReports.filter(report => report.assignedTo === technicianId);
+  const currentAdmins = getPersistedAdmins();
+  const tech = currentAdmins.find(admin => admin.id === technicianId);
+  if (!tech) return [];
+  
+  return allReports.filter(report => 
+    report.hallId === tech.hallId &&
+    report.category?.toLowerCase() === tech.specialty?.toLowerCase() &&
+    report.assignedTo === technicianId
+  );
 };
 
 export const getReportsPendingAssignment = (hallId) => {
@@ -383,7 +346,10 @@ export const getAdminByEmail = (email) => {
 
 export const getTechnicianBySpecialty = (specialty) => {
   const currentAdmins = getPersistedAdmins();
-  return currentAdmins.find(admin => admin.role === 'technician' && admin.specialty === specialty);
+  return currentAdmins.find(admin => 
+    admin.role === 'technician' && 
+    admin.specialty?.toLowerCase() === specialty?.toLowerCase()
+  );
 };
 
 export const getTechnicians = () => {
@@ -393,7 +359,10 @@ export const getTechnicians = () => {
 
 export const getTechniciansBySpecialty = (specialty) => {
   const currentAdmins = getPersistedAdmins();
-  return currentAdmins.filter(admin => admin.role === 'technician' && admin.specialty === specialty);
+  return currentAdmins.filter(admin => 
+    admin.role === 'technician' && 
+    admin.specialty?.toLowerCase() === specialty?.toLowerCase()
+  );
 };
 
 export const saveReport = (updatedReport) => {

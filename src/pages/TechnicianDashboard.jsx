@@ -89,14 +89,19 @@ export default function TechnicianDashboard({ user }) {
     <>
       <div className="page-header">
         <div>
-          <h2 className="page-title">🔧 Technician Workspace</h2>
+          <h2 className="page-title">
+            🔧 {user?.specialtyLabel || 'Technician'} Technician
+          </h2>
           <p className="page-subtitle">
-            Welcome back, <strong>{user?.name || 'Technician'}</strong>. Manage and resolve your assigned repairs.
+            Welcome, <strong>{user?.name || 'Technician'}</strong>! You handle {user?.specialtyLabel || 'maintenance'} issues for {user?.hallName || 'your hall'}
           </p>
         </div>
         <div className="hall-badge">
+          <span className="hall-tag" style={{ background: '#ECFDF5', color: '#10B981', marginRight: '8px' }}>
+            🏛️ {user?.hallName || 'Your Hall'}
+          </span>
           <span className="hall-tag" style={{ background: '#E0F2FE', color: '#0284C7' }}>
-            🛠️ {user?.specialty || 'General'} Technician
+            {user?.specialtyIcon || '🛠️'} {user?.specialtyLabel || 'General'} Specialist
           </span>
         </div>
       </div>
