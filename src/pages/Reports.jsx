@@ -10,6 +10,11 @@ import {
 } from '../data/mockData';
 import HallSelector from '../components/HallSelector';
 
+const isVideo = (uri) => {
+  if (!uri) return false;
+  return uri.startsWith('data:video/') || uri.toLowerCase().endsWith('.mp4') || uri.toLowerCase().endsWith('.mov') || uri.toLowerCase().endsWith('.webm');
+};
+
 // Color-coded priority choices used by the assign modal pills.
 const PRIORITY_OPTIONS = [
   { value: 'low', label: 'Low', icon: '💤', color: '#047857', bg: '#ECFDF5', border: '#6EE7B7' },
@@ -202,7 +207,7 @@ export default function Reports({ user }) {
                 <th>Status</th>
                 <th>Assigned To</th>
                 <th>Priority</th>
-                <th>Photo</th>
+                <th>Photo/Video</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -294,10 +299,10 @@ export default function Reports({ user }) {
                         style={{ padding: '4px 8px', fontSize: '12px' }}
                         onClick={() => handleViewImage(report.imageUri)}
                       >
-                        📷 View
+                        {isVideo(report.imageUri) ? '🎥 View' : '📷 View'}
                       </button>
                     ) : (
-                      <span style={{ color: '#9CA3AF', fontSize: '12px' }}>No photo</span>
+                      <span style={{ color: '#9CA3AF', fontSize: '12px' }}>No media</span>
                     )}
                   </td>
                   <td>
@@ -415,20 +420,37 @@ export default function Reports({ user }) {
               {/* Report summary */}
               <div style={{ display: 'flex', gap: '14px', marginBottom: '16px', flexWrap: 'wrap' }}>
                 {selectedReport.imageUri && (
-                  <img
-                    src={selectedReport.imageUri}
-                    alt="Evidence"
-                    onClick={() => handleViewImage(selectedReport.imageUri)}
-                    style={{
-                      width: '104px',
-                      height: '104px',
-                      objectFit: 'cover',
-                      borderRadius: '12px',
-                      border: '1px solid #E5E7EB',
-                      cursor: 'zoom-in',
-                      flexShrink: 0
-                    }}
-                  />
+                  isVideo(selectedReport.imageUri) ? (
+                    <video
+                      src={selectedReport.imageUri}
+                      onClick={() => handleViewImage(selectedReport.imageUri)}
+                      style={{
+                        width: '104px',
+                        height: '104px',
+                        objectFit: 'cover',
+                        borderRadius: '12px',
+                        border: '1px solid #E5E7EB',
+                        cursor: 'zoom-in',
+                        flexShrink: 0,
+                        background: 'black'
+                      }}
+                    />
+                  ) : (
+                    <img
+                      src={selectedReport.imageUri}
+                      alt="Evidence"
+                      onClick={() => handleViewImage(selectedReport.imageUri)}
+                      style={{
+                        width: '104px',
+                        height: '104px',
+                        objectFit: 'cover',
+                        borderRadius: '12px',
+                        border: '1px solid #E5E7EB',
+                        cursor: 'zoom-in',
+                        flexShrink: 0
+                      }}
+                    />
+                  )
                 )}
                 <div style={{ flex: 1, minWidth: '180px' }}>
                   <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#111827', margin: '0 0 6px' }}>
@@ -632,7 +654,7 @@ export default function Reports({ user }) {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0 }}>📷 Evidence Photo</h3>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0 }}>📁 Evidence Media</h3>
               <button
                 onClick={() => setShowImageModal(false)}
                 aria-label="Close"
@@ -648,18 +670,34 @@ export default function Reports({ user }) {
                 }}
               >✕</button>
             </div>
-            <img
-              src={selectedImage}
-              alt="Evidence"
-              style={{
-                width: '100%',
-                height: 'auto',
-                borderRadius: '8px',
-                display: 'block'
-              }}
-            />
+            {isVideo(selectedImage) ? (
+              <video
+                src={selectedImage}
+                controls
+                autoPlay
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  borderRadius: '8px',
+                  display: 'block',
+                  background: 'black',
+                  maxHeight: '70vh'
+                }}
+              />
+            ) : (
+              <img
+                src={selectedImage}
+                alt="Evidence"
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  borderRadius: '8px',
+                  display: 'block'
+                }}
+              />
+            )}
             <p style={{ textAlign: 'center', fontSize: '12px', color: '#9CA3AF', marginTop: '12px' }}>
-              Tap outside the image or press “✕” to return.
+              Tap outside the media or press “✕” to return.
             </p>
           </div>
         </div>

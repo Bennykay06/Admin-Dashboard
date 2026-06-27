@@ -7,21 +7,26 @@ export default function Sidebar({ sidebarOpen, user }) {
 
   // ===== TECHNICIAN NAVIGATION =====
   const technicianNavItems = [
-    { path: '/technician', icon: '🔧', label: 'Dashboard' },
+    { path: '/', icon: '🔧', label: 'Dashboard' },
+    { path: '/news', icon: '📰', label: 'News' },
+    { path: '/settings', icon: '⚙️', label: 'Settings' },
   ];
 
   // ===== ADMIN NAVIGATION =====
   const adminNavItems = [
     { path: '/', icon: '📊', label: 'Dashboard' },
     { path: '/reports', icon: '📋', label: 'Reports' },
+    { path: '/news', icon: '📰', label: 'News' },
     { path: '/students', icon: '👥', label: 'Students' },
     { path: '/staff', icon: '👤', label: 'Staff' },
+    { path: '/settings', icon: '⚙️', label: 'Settings' },
   ];
 
   // ===== SUPER ADMIN NAVIGATION (Adds Locations & Settings) =====
   const superAdminNavItems = [
     { path: '/', icon: '📊', label: 'Dashboard' },
     { path: '/reports', icon: '📋', label: 'Reports' },
+    { path: '/news', icon: '📰', label: 'News' },
     { path: '/students', icon: '👥', label: 'Students' },
     { path: '/staff', icon: '👤', label: 'Staff' },
     { path: '/locations', icon: '📍', label: 'Locations' },
@@ -83,7 +88,7 @@ export default function Sidebar({ sidebarOpen, user }) {
       </nav>
       
       <div className="sidebar-footer">
-        {user?.role === 'technician' ? '🔧 Technician Portal' : '© 2024 SnapFix Admin'}
+        © 2024 SnapFix Admin
       </div>
     </aside>
   );

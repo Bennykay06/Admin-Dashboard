@@ -16,7 +16,7 @@ export default function Header({ user, setSidebarOpen, handleLogout, pageTitle }
       case '/staff': return 'Staff Management';
       case '/locations': return 'Locations Management';
       case '/settings': return 'Settings';
-      case '/technician': return 'Technician Dashboard';
+      case '/news': return 'Hall News';
       default: return 'Dashboard';
     }
   };

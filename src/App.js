@@ -15,7 +15,7 @@ import Staff from './pages/Staff';
 import Locations from './pages/Locations';
 import Settings from './pages/Settings';
 import TechnicianDashboard from './pages/TechnicianDashboard';
-import TechLogin from './pages/TechLogin';
+import News from './pages/News';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -38,13 +38,9 @@ function App() {
 
   const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     if (!user) {
-      if (allowedRoles.includes('technician')) {
-        return <Navigate to="/tech-login" />;
-      }
       return <Navigate to="/login" />;
     }
     if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-      if (user.role === 'technician') return <Navigate to="/technician" />;
       return <Navigate to="/" />;
     }
     return children;
@@ -54,27 +50,30 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<Login setUser={setUser} />} />
-        <Route path="/tech-login" element={<TechLogin setUser={setUser} />} />
         
-        {/* Technician Route */}
+        {/* Admin/Technician Routes */}
         <Route 
-          path="/technician" 
+          path="/" 
           element={
-            <ProtectedRoute allowedRoles={['technician']}>
+            <ProtectedRoute allowedRoles={['super_admin', 'hall_admin', 'technician']}>
               <Layout user={user} handleLogout={handleLogout}>
-                <TechnicianDashboard user={user} />
+                {user?.role === 'technician' ? (
+                  <TechnicianDashboard user={user} />
+                ) : (
+                  <Dashboard user={user} />
+                )}
               </Layout>
             </ProtectedRoute>
           } 
         />
-        
-        {/* Admin Routes */}
+
+        {/* NEWS ROUTE - All Logged In Roles */}
         <Route 
-          path="/" 
+          path="/news" 
           element={
-            <ProtectedRoute allowedRoles={['super_admin', 'hall_admin']}>
+            <ProtectedRoute allowedRoles={['super_admin', 'hall_admin', 'technician']}>
               <Layout user={user} handleLogout={handleLogout}>
-                <Dashboard user={user} />
+                <News user={user} />
               </Layout>
             </ProtectedRoute>
           } 
@@ -125,13 +124,13 @@ function App() {
           } 
         />
         
-        {/* SETTINGS - Only Super Admin */}
+        {/* SETTINGS - All Logged In Roles */}
         <Route 
           path="/settings" 
           element={
-            <ProtectedRoute allowedRoles={['super_admin']}>
+            <ProtectedRoute allowedRoles={['super_admin', 'hall_admin', 'technician']}>
               <Layout user={user} handleLogout={handleLogout}>
-                <Settings user={user} />
+                <Settings user={user} setUser={setUser} />
               </Layout>
             </ProtectedRoute>
           } 

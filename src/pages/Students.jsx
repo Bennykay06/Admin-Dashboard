@@ -13,6 +13,25 @@ export default function Students({ user }) {
     setStudents(hallStudents);
   }, [user, selectedHall]);
 
+  const toggleStatus = (id) => {
+    const allStudents = JSON.parse(localStorage.getItem('snapfix_students') || '[]');
+    const updatedStudents = allStudents.map(student => {
+      if (student.id === id) {
+        const currentStatus = student.status || 'active';
+        return {
+          ...student,
+          status: currentStatus === 'active' ? 'inactive' : 'active'
+        };
+      }
+      return student;
+    });
+    localStorage.setItem('snapfix_students', JSON.stringify(updatedStudents));
+    
+    // Refresh display
+    const hallId = user?.role === 'super_admin' ? selectedHall : user?.hallId;
+    setStudents(updatedStudents.filter(s => !hallId || s.hallId === hallId));
+  };
+
   const showHallSelector = user?.role === 'super_admin';
 
   return (
@@ -72,7 +91,23 @@ export default function Students({ user }) {
                     </span>
                   </td>
                   <td>
-                    <span className="badge badge-active">Active</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <label className="switch">
+                        <input 
+                          type="checkbox" 
+                          checked={(student.status || 'active') === 'active'} 
+                          onChange={() => toggleStatus(student.id)} 
+                        />
+                        <span className="slider"></span>
+                      </label>
+                      <span style={{ 
+                        fontSize: '13px', 
+                        fontWeight: '500', 
+                        color: (student.status || 'active') === 'active' ? '#10B981' : '#6B7280' 
+                      }}>
+                        {(student.status || 'active') === 'active' ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
                   </td>
                 </tr>
               ))}

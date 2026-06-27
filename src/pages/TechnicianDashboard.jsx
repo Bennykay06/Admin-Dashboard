@@ -5,12 +5,19 @@ import {
   getStatusLabel, 
   getCategoryIcon,
   getPersistedReports,
-  savePersistedReports
+  savePersistedReports,
+  getNewsByHall
 } from '../data/mockData';
 import StatCard from '../components/StatCard';
 
+const isVideo = (uri) => {
+  if (!uri) return false;
+  return uri.startsWith('data:video/') || uri.toLowerCase().endsWith('.mp4') || uri.toLowerCase().endsWith('.mov') || uri.toLowerCase().endsWith('.webm');
+};
+
 export default function TechnicianDashboard({ user }) {
   const [reports, setReports] = useState([]);
+  const [news, setNews] = useState([]);
   const [filter, setFilter] = useState('all');
   const [selectedReport, setSelectedReport] = useState(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -25,6 +32,9 @@ export default function TechnicianDashboard({ user }) {
     if (user?.id) {
       const techReports = getReportsByTechnician(user.id);
       setReports(techReports);
+      
+      const hallNews = getNewsByHall(user.hallId);
+      setNews([...hallNews].sort((a, b) => new Date(b.date) - new Date(a.date)));
     }
   }, [user]);
 
@@ -153,7 +163,7 @@ export default function TechnicianDashboard({ user }) {
                 <th>Issue</th>
                 <th>Priority</th>
                 <th>Status</th>
-                <th>Photo</th>
+                <th>Photo/Video</th>
                 <th>Notes</th>
                 <th>Actions</th>
               </tr>
@@ -205,10 +215,10 @@ export default function TechnicianDashboard({ user }) {
                           style={{ padding: '4px 8px', fontSize: '12px' }}
                           onClick={() => handleViewImage(report.imageUri)}
                         >
-                          📷 View
+                          {isVideo(report.imageUri) ? '🎥 View' : '📷 View'}
                         </button>
                       ) : (
-                        <span style={{ color: '#9CA3AF', fontSize: '12px' }}>No photo</span>
+                        <span style={{ color: '#9CA3AF', fontSize: '12px' }}>No media</span>
                       )}
                     </td>
                     <td style={{ fontSize: '13px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -232,6 +242,47 @@ export default function TechnicianDashboard({ user }) {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Read-Only Hall News Feed */}
+      <div className="table-container" style={{ marginTop: '24px', padding: '24px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: '0 0 16px 0' }}>📰 Hall Announcements & News</h3>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+          {news.length === 0 ? (
+            <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#6B7280', margin: '20px 0', fontSize: '14px' }}>
+              No announcements posted for your hall yet.
+            </p>
+          ) : (
+            news.map(item => (
+              <div 
+                key={item.id} 
+                style={{ 
+                  background: '#F9FAFB', 
+                  border: '1px solid #E5E7EB', 
+                  borderRadius: '10px', 
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <div>
+                  <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '600', color: '#1F2937' }}>
+                    {item.title}
+                  </h4>
+                  <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#4B5563', lineHeight: '1.4' }}>
+                    {item.content}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#9CA3AF', borderTop: '1px dashed #E5E7EB', paddingTop: '8px' }}>
+                  <span>✍️ {item.author}</span>
+                  <span>🗓️ {new Date(item.date).toLocaleDateString()}</span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -261,25 +312,41 @@ export default function TechnicianDashboard({ user }) {
               🔧 Update Job #{selectedReport.id}
             </h2>
 
-            {/* Evidence Image */}
+            {/* Evidence Media */}
             {selectedReport.imageUri && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
-                  Student Photo Evidence (Click to zoom)
+                  Student Media Evidence (Click to zoom/play)
                 </label>
-                <img 
-                  src={selectedReport.imageUri} 
-                  alt="Evidence" 
-                  style={{ 
-                    width: '100%', 
-                    height: '180px', 
-                    objectFit: 'cover',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    border: '1px solid #E5E7EB'
-                  }}
-                  onClick={() => handleViewImage(selectedReport.imageUri)}
-                />
+                {isVideo(selectedReport.imageUri) ? (
+                  <video 
+                    src={selectedReport.imageUri} 
+                    style={{ 
+                      width: '100%', 
+                      height: '180px', 
+                      objectFit: 'cover',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      border: '1px solid #E5E7EB',
+                      background: 'black'
+                    }}
+                    onClick={() => handleViewImage(selectedReport.imageUri)}
+                  />
+                ) : (
+                  <img 
+                    src={selectedReport.imageUri} 
+                    alt="Evidence" 
+                    style={{ 
+                      width: '100%', 
+                      height: '180px', 
+                      objectFit: 'cover',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      border: '1px solid #E5E7EB'
+                    }}
+                    onClick={() => handleViewImage(selectedReport.imageUri)}
+                  />
+                )}
               </div>
             )}
 
@@ -387,7 +454,7 @@ export default function TechnicianDashboard({ user }) {
             boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>📷 Evidence Photo</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>📁 Evidence Media</h3>
               <button
                 className="btn btn-secondary"
                 onClick={() => setShowImageModal(false)}
@@ -396,17 +463,33 @@ export default function TechnicianDashboard({ user }) {
                 ✕ Close
               </button>
             </div>
-            <img 
-              src={selectedImage} 
-              alt="Evidence" 
-              style={{ 
-                width: '100%', 
-                height: 'auto', 
-                maxHeight: '70vh',
-                objectFit: 'contain',
-                borderRadius: '8px'
-              }}
-            />
+            {isVideo(selectedImage) ? (
+              <video 
+                src={selectedImage} 
+                controls
+                autoPlay
+                style={{ 
+                  width: '100%', 
+                  height: 'auto', 
+                  maxHeight: '70vh',
+                  objectFit: 'contain',
+                  borderRadius: '8px',
+                  background: 'black'
+                }}
+              />
+            ) : (
+              <img 
+                src={selectedImage} 
+                alt="Evidence" 
+                style={{ 
+                  width: '100%', 
+                  height: 'auto', 
+                  maxHeight: '70vh',
+                  objectFit: 'contain',
+                  borderRadius: '8px'
+                }}
+              />
+            )}
           </div>
         </div>
       )}

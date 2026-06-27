@@ -156,7 +156,7 @@ export default function Staff({ user }) {
     const isHallAdmin = formData.specialty === 'hall-admin';
     const staffRole = isHallAdmin ? 'Hall Admin' : `${specInfo.label} Technician`;
     const loginRole = isHallAdmin ? 'hall_admin' : 'technician';
-    const loginPortal = isHallAdmin ? 'Admin Portal' : 'Technician Portal';
+    const loginPortal = 'Admin Portal';
 
     // Auto-generate email: [firstname].[lastname]@[hallcode].snapfix.com
     // If no surname is given, fall back to the person's role/specialty.
@@ -272,6 +272,41 @@ export default function Staff({ user }) {
     savePersistedStaff(updatedStaff);
   };
 
+  // ===== RESET CREDENTIALS =====
+  const handleResetCredentials = (member) => {
+    if (window.confirm(`Are you sure you want to reset credentials for ${member.name}?`)) {
+      const currentAdmins = getPersistedAdmins();
+      const adminIndex = currentAdmins.findIndex(a => a.email.toLowerCase() === member.email.toLowerCase());
+      
+      if (adminIndex !== -1) {
+        const generateRandomPassword = () => {
+          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+~}{[]:;?><';
+          let password = '';
+          for (let i = 0; i < 10; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          return password;
+        };
+        const newPassword = generateRandomPassword();
+        
+        currentAdmins[adminIndex].password = newPassword;
+        savePersistedAdmins(currentAdmins);
+        
+        setGeneratedCredentials({
+          name: member.name,
+          role: member.role,
+          email: member.email,
+          password: newPassword,
+          portal: 'Admin Portal'
+        });
+        
+        setShowCredentialsModal(true);
+      } else {
+        alert('Admin account not found for this staff member.');
+      }
+    }
+  };
+
   const currentAdmins = getPersistedAdmins();
   const displayedStaff = staff.filter(member => {
     if (isSuperAdmin) return true; // Super admin sees all staff
@@ -337,13 +372,23 @@ export default function Staff({ user }) {
                       </span>
                     </td>
                     <td>
-                      <span 
-                        className={`badge badge-${member.status}`}
-                        onClick={() => toggleStatus(member.id)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        {member.status}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <label className="switch">
+                          <input 
+                            type="checkbox" 
+                            checked={member.status === 'active'} 
+                            onChange={() => toggleStatus(member.id)} 
+                          />
+                          <span className="slider"></span>
+                        </label>
+                        <span style={{ 
+                          fontSize: '13px', 
+                          fontWeight: '500', 
+                          color: member.status === 'active' ? '#10B981' : '#6B7280' 
+                        }}>
+                          {member.status === 'active' ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
                     </td>
                     <td>
                       <button 
@@ -352,6 +397,13 @@ export default function Staff({ user }) {
                         onClick={() => handleEditStaff(member)}
                       >
                         ✏️ Edit
+                      </button>
+                      <button 
+                        className="btn btn-warning" 
+                        style={{ marginRight: '8px', padding: '4px 12px', fontSize: '12px' }}
+                        onClick={() => handleResetCredentials(member)}
+                      >
+                        🔑 Reset
                       </button>
                       <button 
                         className="btn btn-danger" 

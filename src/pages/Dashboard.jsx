@@ -1,4 +1,4 @@
-// src/pages/Dashboard.jsx - REMOVED UNUSED 'halls' IMPORT
+// src/pages/Dashboard.jsx - REMOVED NEWS FEED FROM DASHBOARD
 import React, { useState, useEffect } from 'react';
 import StatCard from '../components/StatCard';
 import { getReportsByHall } from '../data/mockData';
@@ -16,6 +16,8 @@ export default function Dashboard({ user }) {
 
   useEffect(() => {
     const hallId = user?.role === 'super_admin' ? selectedHall : user?.hallId;
+    
+    // Load Reports
     const hallReports = getReportsByHall(hallId);
     setReports(hallReports);
 
@@ -30,7 +32,6 @@ export default function Dashboard({ user }) {
   const getHallDisplay = () => {
     if (user?.role === 'super_admin') {
       if (selectedHall) {
-        // Find hall name from the reports or use a simple lookup
         const hall = reports.find(r => r.hallId === selectedHall);
         return hall ? hall.hallName : 'All Halls';
       }
@@ -73,6 +74,7 @@ export default function Dashboard({ user }) {
         />
       )}
 
+      {/* Stats Cards */}
       <div className="stats-grid">
         <StatCard label="Total Reports" value={stats.total} icon="📊" />
         <StatCard label="Pending" value={stats.pending} type="pending" icon="⏳" />
@@ -80,7 +82,11 @@ export default function Dashboard({ user }) {
         <StatCard label="Resolved" value={stats.resolved} type="resolved" icon="✅" />
       </div>
 
-      <div className="table-container">
+      {/* Recent Reports (Full Width) */}
+      <div className="table-container" style={{ marginTop: '24px' }}>
+        <div style={{ padding: '20px 24px 0 24px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>📋 Recent Reports</h3>
+        </div>
         <div className="table-wrapper">
           <table className="table">
             <thead>
@@ -109,9 +115,10 @@ export default function Dashboard({ user }) {
                     <td>
                       <span style={{ 
                         color: report.priority === 'high' ? '#DC2626' : 
-                               report.priority === 'medium' ? '#F59E0B' : '#10B981'
+                               report.priority === 'medium' ? '#F59E0B' : '#10B981',
+                        fontWeight: '600'
                       }}>
-                        {report.priority}
+                        {report.priority.toUpperCase()}
                       </span>
                     </td>
                   </tr>

@@ -43,6 +43,26 @@ const initialStudents = [
 // No staff are seeded — an administrator adds them via Staff Management.
 const initialStaff = [];
 
+// ===== INITIAL NEWS DATA =====
+const initialNews = [
+  {
+    id: 'n1',
+    hallId: '1',
+    title: 'Water Supply Maintenance',
+    content: 'Please note that the main water valve will be shut down for maintenance on Sunday from 8:00 AM to 12:00 PM. Kindly store enough water.',
+    date: '2026-06-25T08:00:00Z',
+    author: 'Unity Admin'
+  },
+  {
+    id: 'n2',
+    hallId: '2',
+    title: 'New WiFi Routers Installed',
+    content: 'We have upgraded the WiFi infrastructure in Block B. High-speed connectivity is now available. Let us know if you face issues.',
+    date: '2026-06-24T10:00:00Z',
+    author: 'Indeco Admin'
+  }
+];
+
 // ===== INITIAL REPORTS (WITH PRE-ASSIGNMENTS) =====
 const initialReports = [
   {
@@ -78,7 +98,7 @@ const initialReports = [
     priority: 'medium',
     timestamp: '2024-06-19T14:20:00Z',
     description: 'The bathroom tap is leaking constantly and wasting water.',
-    imageUri: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&q=80',
+    imageUri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
     assignedTo: null,
     assignedName: null,
     assignedSpecialty: null,
@@ -216,8 +236,20 @@ const initLocalStorage = () => {
     if (!localStorage.getItem('snapfix_staff')) {
       localStorage.setItem('snapfix_staff', JSON.stringify(initialStaff));
     }
-    if (!localStorage.getItem('snapfix_reports')) {
+    const storedReports = localStorage.getItem('snapfix_reports');
+    if (!storedReports) {
       localStorage.setItem('snapfix_reports', JSON.stringify(initialReports));
+    } else {
+      try {
+        const parsed = JSON.parse(storedReports);
+        const hasVideo = parsed.some(r => r.imageUri && (r.imageUri.endsWith('.mp4') || r.imageUri.startsWith('data:video/')));
+        if (!hasVideo) {
+          localStorage.setItem('snapfix_reports', JSON.stringify(initialReports));
+        }
+      } catch (e) {}
+    }
+    if (!localStorage.getItem('snapfix_news')) {
+      localStorage.setItem('snapfix_news', JSON.stringify(initialNews));
     }
 
     // Revoke retired demo accounts (old hall admins + the demo technician)
@@ -290,6 +322,14 @@ export const savePersistedStaff = (staffList) => {
   localStorage.setItem('snapfix_staff', JSON.stringify(staffList));
 };
 
+export const getPersistedNews = () => {
+  return JSON.parse(localStorage.getItem('snapfix_news') || '[]');
+};
+
+export const savePersistedNews = (newsList) => {
+  localStorage.setItem('snapfix_news', JSON.stringify(newsList));
+};
+
 export const getPersistedHalls = () => {
   return JSON.parse(localStorage.getItem('snapfix_halls') || '[]');
 };
@@ -311,6 +351,12 @@ export const getReportsByHall = (hallId) => {
   const allReports = getPersistedReports();
   if (!hallId) return allReports;
   return allReports.filter(report => report.hallId === hallId);
+};
+
+export const getNewsByHall = (hallId) => {
+  const allNews = getPersistedNews();
+  if (!hallId) return allNews;
+  return allNews.filter(news => news.hallId === hallId);
 };
 
 export const getReportsByTechnician = (technicianId) => {

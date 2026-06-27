@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getAdminByEmail } from '../data/mockData';
 
 export default function Login({ setUser }) {
@@ -17,12 +17,7 @@ export default function Login({ setUser }) {
     if (admin && admin.password === password) {
       localStorage.setItem('adminUser', JSON.stringify(admin));
       setUser(admin);
-      
-      if (admin.role === 'technician') {
-        navigate('/technician');
-      } else {
-        navigate('/');
-      }
+      navigate('/');
     } else {
       setError('Invalid email or password');
     }
@@ -81,12 +76,6 @@ export default function Login({ setUser }) {
             Sign In
           </button>
         </form>
-
-        <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          <Link to="/tech-login" style={{ color: '#3B82F6', fontWeight: '500', textDecoration: 'none', fontSize: '13px' }}>
-            🔧 Technician? Go to Technician Portal →
-          </Link>
-        </div>
       </div>
     </div>
   );
