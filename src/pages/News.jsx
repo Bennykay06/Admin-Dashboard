@@ -1,7 +1,6 @@
 // src/pages/News.jsx - DEDICATED NEWS PAGE WITH IMAGE AND VIDEO UPLOAD SUPPORT
 import React, { useState, useEffect } from 'react';
 import { getNewsByHall, getPersistedHalls } from '../data/mockData';
-import HallSelector from '../components/HallSelector';
 
 export default function News({ user }) {
   const isSuperAdmin = user?.role === 'super_admin';
@@ -9,6 +8,7 @@ export default function News({ user }) {
 
   const [news, setNews] = useState([]);
   const [selectedHall, setSelectedHall] = useState(null);
+  const [halls, setHalls] = useState([]);
   
   // Post News modal states
   const [showModal, setShowModal] = useState(false);
@@ -16,7 +16,12 @@ export default function News({ user }) {
   const [content, setContent] = useState('');
   const [mediaUri, setMediaUri] = useState('');
   const [mediaType, setMediaType] = useState(''); // 'image' or 'video'
-  const [newsHallId, setNewsHallId] = useState('1'); // used for super_admin posting when "All Halls" is active
+  const [newsHallId, setNewsHallId] = useState('all'); // used for super_admin posting when "All Halls" is active
+
+  // Load halls and initial news
+  useEffect(() => {
+    setHalls(getPersistedHalls());
+  }, []);
 
   useEffect(() => {
     const hallId = isSuperAdmin ? selectedHall : user?.hallId;
@@ -46,6 +51,10 @@ export default function News({ user }) {
 
   const handlePostNews = (e) => {
     e.preventDefault();
+    if (!isAdmin) {
+      alert('Technicians and non-admins are not allowed to post announcements.');
+      return;
+    }
     if (!title.trim() || !content.trim()) return;
 
     const targetHallId = isSuperAdmin 
@@ -81,7 +90,7 @@ export default function News({ user }) {
 
     // Refresh state
     const hallId = isSuperAdmin ? selectedHall : user?.hallId;
-    const currentHallNews = updatedNewsList.filter(n => !hallId || n.hallId === hallId);
+    const currentHallNews = updatedNewsList.filter(n => !hallId || String(n.hallId) === String(hallId) || String(n.hallId) === 'all');
     setNews(currentHallNews.sort((a, b) => new Date(b.date) - new Date(a.date)));
   };
 
@@ -93,314 +102,263 @@ export default function News({ user }) {
 
       // Refresh state
       const hallId = isSuperAdmin ? selectedHall : user?.hallId;
-      const currentHallNews = updatedNewsList.filter(n => !hallId || n.hallId === hallId);
+      const currentHallNews = updatedNewsList.filter(n => !hallId || String(n.hallId) === String(hallId) || String(n.hallId) === 'all');
       setNews(currentHallNews.sort((a, b) => new Date(b.date) - new Date(a.date)));
     }
   };
 
-  const getHallDisplay = () => {
-    if (isSuperAdmin) {
-      if (selectedHall) {
-        const halls = getPersistedHalls();
-        const hall = halls.find(h => h.id === selectedHall);
-        return hall ? hall.name : 'All Halls';
-      }
-      return 'All Halls';
-    }
-    return user?.hallName || 'Your Hall';
+  const getHallName = (hallId) => {
+    if (String(hallId) === 'all') return 'All Halls';
+    const found = halls.find(h => String(h.id) === String(hallId));
+    return found ? found.name : 'All Halls';
   };
 
-  const halls = getPersistedHalls();
+  const getInitials = (name) => {
+    if (!name) return 'SA';
+    const parts = name.trim().toUpperCase().split(/\s+/);
+    if (parts.length >= 2) {
+      return parts[0][0] + parts[1][0];
+    }
+    return parts[0].slice(0, 2);
+  };
 
   return (
-    <>
-      <div className="page-header">
+    <div className="font-body-md">
+      {/* Header */}
+      <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
         <div>
-          <h2 className="page-title">📰 {getHallDisplay()} News Feed</h2>
-          <p className="page-subtitle">Announcements, notices, and updates regarding the hall</p>
+          <h2 className="font-headline-xl text-headline-xl font-bold text-deep-charcoal tracking-tight">Announcements</h2>
+          <p className="text-secondary font-body-lg mt-1">Official updates, alerts and notices regarding KNUST campus</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <div className="hall-badge">
-            <span className="hall-tag">🏛️ {getHallDisplay()}</span>
-          </div>
+        <div className="flex gap-4">
           {isAdmin && (
-            <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-              + Post Announcement
+            <button 
+              className="flex items-center gap-2 px-6 py-3 bg-deep-charcoal text-white rounded-xl text-sm font-bold hover:bg-black transition-all shadow-sm"
+              onClick={() => setShowModal(true)}
+            >
+              <span className="material-symbols-outlined text-[20px]">campaign</span>
+              Post Announcement
             </button>
           )}
         </div>
-      </div>
+      </header>
 
+      {/* Hall Filter Tabs (Super Admin Only) */}
       {isSuperAdmin && (
-        <HallSelector 
-          selectedHall={selectedHall} 
-          onSelectHall={setSelectedHall} 
-        />
+        <div className="mb-10 overflow-x-auto thin-scrollbar pb-4 border-b border-black/10">
+          <div className="flex gap-4 min-w-max">
+            <button 
+              onClick={() => setSelectedHall(null)}
+              className={`px-6 py-2 font-label-md text-label-md uppercase tracking-widest transition-all rounded-lg ${
+                !selectedHall 
+                  ? 'bg-black text-white' 
+                  : 'bg-white border border-black text-black hover:bg-black hover:text-white'
+              }`}
+            >
+              All Halls
+            </button>
+            {halls.map((hall) => (
+              <button 
+                key={hall.id}
+                onClick={() => setSelectedHall(Number(hall.id))}
+                className={`px-6 py-2 font-label-md text-label-md uppercase tracking-widest transition-all rounded-lg ${
+                  selectedHall === Number(hall.id) 
+                    ? 'bg-black text-white' 
+                    : 'bg-white border border-black text-black hover:bg-black hover:text-white'
+                }`}
+              >
+                {hall.name}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
-      {/* News Cards Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
-        gap: '24px',
-        marginTop: '24px'
-      }} className="dashboard-layout-grid">
+      {/* Announcements Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {news.length === 0 ? (
-          <div style={{
-            gridColumn: '1 / -1',
-            textAlign: 'center',
-            padding: '80px 24px',
-            background: '#FFFFFF',
-            borderRadius: '16px',
-            border: '1px solid #E5E7EB',
-            color: '#6B7280'
-          }}>
-            <span style={{ fontSize: '48px', display: 'block', marginBottom: '16px' }}>📰</span>
-            <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', margin: '0 0 8px 0' }}>No Announcements</h3>
-            <p style={{ margin: 0, fontSize: '14px' }}>There are no news updates posted for this hall yet.</p>
+          <div className="col-span-full text-center py-16 bg-white border border-outline-variant/30 rounded-xl text-secondary">
+            <span className="material-symbols-outlined text-4xl text-secondary/40 mb-2">newspaper</span>
+            <p className="font-bold text-deep-charcoal">No Announcements</p>
+            <p className="text-sm">There are no updates posted for this selection yet.</p>
           </div>
         ) : (
           news.map((item) => (
-            <div 
+            <article 
               key={item.id} 
-              style={{
-                background: '#FFFFFF',
-                border: '1px solid #E5E7EB',
-                borderRadius: '16px',
-                padding: '24px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                position: 'relative'
-              }}
+              className="bg-white border border-outline-variant/30 rounded-xl overflow-hidden group hover:border-deep-charcoal hover:shadow-lg transition-all duration-300 flex flex-col"
             >
-              <div>
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111827', lineHeight: '1.3' }}>
-                    {item.title}
-                  </h3>
-                  {isAdmin && (
-                    <button 
-                      onClick={() => handleDeleteNews(item.id)}
-                      className="btn btn-danger"
-                      style={{ padding: '6px 10px', fontSize: '12px', background: '#FEF2F2', color: '#EF4444' }}
-                      title="Delete Announcement"
-                    >
-                      🗑️ Delete
-                    </button>
-                  )}
-                </div>
-
-                {/* Content */}
-                <p style={{ 
-                  margin: '0 0 16px 0', 
-                  fontSize: '14px', 
-                  color: '#4B5563', 
-                  lineHeight: '1.6', 
-                  whiteSpace: 'pre-wrap' 
-                }}>
-                  {item.content}
-                </p>
-
-                {/* Media (Image or Video) */}
-                {item.mediaUri && (
-                  <div style={{ marginBottom: '20px', borderRadius: '10px', overflow: 'hidden', background: '#F9FAFB' }}>
-                    {item.mediaType === 'video' ? (
-                      <video 
-                        src={item.mediaUri} 
-                        controls 
-                        style={{ width: '100%', maxHeight: '350px', display: 'block', background: 'black' }} 
-                      />
-                    ) : (
-                      <img 
-                        src={item.mediaUri} 
-                        alt="Announcement Media" 
-                        style={{ width: '100%', maxHeight: '350px', objectFit: 'contain', display: 'block' }} 
-                      />
-                    )}
+              {/* Media Preview (or fallback) */}
+              <div className="relative h-48 bg-surface-container-high transition-all duration-300">
+                {item.mediaUri ? (
+                  item.mediaType === 'video' ? (
+                    <video 
+                      src={item.mediaUri} 
+                      className="w-full h-full object-cover"
+                      muted
+                      disabled
+                    />
+                  ) : (
+                    <img 
+                      src={item.mediaUri} 
+                      alt={item.title} 
+                      className="w-full h-full object-cover"
+                    />
+                  )
+                ) : (
+                  <div className="w-full h-full bg-surface-container flex flex-col items-center justify-center border-b border-outline-variant/10 text-on-surface-variant/40">
+                    <span className="material-symbols-outlined text-4xl mb-1">campaign</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest">No Media Attached</span>
                   </div>
                 )}
+                
+                {/* Delete button (Admins only) */}
+                {isAdmin && (
+                  <div className="absolute top-4 right-4 z-10">
+                    <button 
+                      onClick={() => handleDeleteNews(item.id)}
+                      className="bg-white/90 backdrop-blur-sm p-2 rounded-lg text-deep-charcoal hover:bg-error hover:text-white transition-colors shadow-sm"
+                      title="Delete Announcement"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">delete</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Hall Tag */}
+                <div className="absolute bottom-4 left-4 z-10">
+                  <span className="bg-deep-charcoal text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-md">
+                    {getHallName(item.hallId)}
+                  </span>
+                </div>
               </div>
 
-              {/* Footer */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '12px',
-                color: '#9CA3AF',
-                borderTop: '1px solid #F3F4F6',
-                paddingTop: '12px',
-                marginTop: '16px'
-              }}>
-                <span>✍️ <strong>{item.author}</strong></span>
-                <span>🗓️ {new Date(item.date).toLocaleDateString()}</span>
+              {/* Card Body */}
+              <div className="p-6 flex flex-col flex-1">
+                <h3 className="font-title-md text-title-md text-on-surface mb-3 group-hover:underline transition-all line-clamp-2">
+                  {item.title}
+                </h3>
+                <p className="font-body-md text-body-md text-on-surface-variant line-clamp-4 mb-6">
+                  {item.content}
+                </p>
+                
+                {/* Author Info */}
+                <div className="mt-auto flex items-center justify-between pt-6 border-t border-outline-variant/30">
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-6 rounded-full bg-deep-charcoal flex items-center justify-center text-white text-[10px] font-bold">
+                      {getInitials(item.author)}
+                    </div>
+                    <span className="text-label-sm text-on-surface font-semibold text-xs">{item.author}</span>
+                  </div>
+                  <span className="text-label-sm text-on-surface-variant/60 text-xs">
+                    {new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                </div>
               </div>
-            </div>
+            </article>
           ))
         )}
       </div>
 
       {/* ===== POST NEWS MODAL ===== */}
       {showModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '16px'
-        }}>
-          <form onSubmit={handlePostNews} style={{
-            background: '#FFFFFF',
-            borderRadius: '16px',
-            padding: '32px',
-            width: '100%',
-            maxWidth: '550px',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-            maxHeight: '90vh',
-            overflowY: 'auto'
-          }}>
-            <h2 style={{ marginBottom: '20px', fontSize: '22px', fontWeight: '700', color: '#111827' }}>
-              📰 Post Hall Announcement
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <form 
+            onSubmit={handlePostNews}
+            className="bg-white border border-outline rounded-xl p-8 max-w-xl w-full flex flex-col shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <h2 className="font-headline-md text-headline-md text-deep-charcoal mb-6 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[24px]">campaign</span>
+              Post Hall Announcement
             </h2>
 
-            {/* Hall selector for Super Admin if "All Halls" is currently active */}
+            {/* Target Hall (Super Admin only, if not filtering) */}
             {isSuperAdmin && !selectedHall && (
-              <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>
-                  Target Hall *
-                </label>
-                <select
-                  value={newsHallId}
-                  onChange={(e) => setNewsHallId(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    background: 'white',
-                    outline: 'none'
-                  }}
-                >
-                  {halls.map(hall => (
-                    <option key={hall.id} value={hall.id}>{hall.name}</option>
-                  ))}
-                </select>
+              <div className="space-y-1.5 mb-4">
+                <label className="font-label-md text-black/60 block text-xs">Target Hall *</label>
+                <div className="relative">
+                  <select
+                    className="w-full bg-surface-container-low border border-outline-variant rounded-lg p-2.5 font-body-md focus:border-black outline-none transition-all appearance-none cursor-pointer"
+                    value={newsHallId}
+                    onChange={(e) => setNewsHallId(e.target.value)}
+                    required
+                  >
+                    <option value="all">All Halls (Broadcast)</option>
+                    {halls.map(hall => (
+                      <option key={hall.id} value={hall.id}>{hall.name}</option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">expand_more</span>
+                </div>
               </div>
             )}
 
             {/* Title */}
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>
-                Title *
-              </label>
+            <div className="space-y-1.5 mb-4">
+              <label className="font-label-md text-black/60 block text-xs">Title *</label>
               <input
                 type="text"
-                placeholder="e.g., Block B Maintenance Completed"
+                placeholder="e.g., Scheduled Water Supply Maintenance"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  outline: 'none'
-                }}
+                className="w-full bg-surface-container-low border border-outline-variant rounded-lg p-2.5 font-body-md focus:border-black outline-none transition-all text-sm font-semibold"
                 required
               />
             </div>
 
             {/* Content */}
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>
-                Content *
-              </label>
+            <div className="space-y-1.5 mb-4">
+              <label className="font-label-md text-black/60 block text-xs">Content *</label>
               <textarea
                 placeholder="Write the announcement details..."
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 rows="5"
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  resize: 'vertical',
-                  fontFamily: 'inherit'
-                }}
+                className="w-full bg-surface-container-low border border-outline-variant rounded-lg p-2.5 font-body-md focus:border-black outline-none transition-all text-sm"
                 required
               />
             </div>
 
-            {/* Media Upload */}
-            <div className="form-group" style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>
-                Upload Image or Video (Optional, max 2MB)
-              </label>
+            {/* File Upload */}
+            <div className="space-y-1.5 mb-6">
+              <label className="font-label-md text-black/60 block text-xs">Upload Image or Video (Optional, max 2MB)</label>
               <input 
                 type="file" 
                 accept="image/*,video/*"
                 onChange={handleFileChange}
-                style={{
-                  width: '100%',
-                  fontSize: '13px',
-                  color: '#4B5563',
-                  padding: '6px 0'
-                }}
+                className="w-full bg-surface-container-low border border-outline-variant rounded-lg p-2.5 font-body-md focus:border-black outline-none transition-all text-xs"
               />
             </div>
 
             {/* Media Preview inside Modal */}
             {mediaUri && (
-              <div style={{ marginBottom: '20px', position: 'relative', background: '#F9FAFB', borderRadius: '8px', padding: '12px' }}>
-                <span style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: '#6B7280', fontWeight: '600' }}>Media Preview</span>
+              <div className="mb-6 relative bg-surface-container-low border border-outline-variant rounded-lg p-3">
+                <span className="block mb-2 text-xs font-bold text-secondary">Media Preview</span>
                 {mediaType === 'video' ? (
-                  <video src={mediaUri} controls style={{ width: '100%', maxHeight: '180px', borderRadius: '8px', background: 'black' }} />
+                  <video src={mediaUri} controls className="w-full max-h-[180px] rounded bg-black" />
                 ) : (
-                  <img src={mediaUri} alt="Preview" style={{ width: '100%', maxHeight: '180px', objectFit: 'contain', borderRadius: '8px' }} />
+                  <img src={mediaUri} alt="Preview" className="w-full max-h-[180px] object-contain rounded" />
                 )}
                 <button 
                   type="button" 
                   onClick={() => { setMediaUri(''); setMediaType(''); }}
-                  style={{
-                    position: 'absolute',
-                    top: '16px',
-                    right: '16px',
-                    background: '#EF4444',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: '24px',
-                    height: '24px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 'bold',
-                    fontSize: '12px'
-                  }}
+                  className="absolute top-2 right-2 bg-error text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs"
                 >
                   ✕
                 </button>
               </div>
             )}
 
-            {/* Action buttons */}
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+            {/* Buttons */}
+            <div className="flex gap-4 mt-4">
+              <button 
+                type="submit" 
+                className="flex-1 py-3 bg-deep-charcoal text-white rounded-lg font-semibold hover:bg-black transition-all shadow-sm"
+              >
                 Post Announcement
               </button>
               <button
                 type="button"
-                className="btn btn-secondary"
                 onClick={() => {
                   setShowModal(false);
                   setTitle('');
@@ -408,7 +366,7 @@ export default function News({ user }) {
                   setMediaUri('');
                   setMediaType('');
                 }}
-                style={{ flex: 1 }}
+                className="flex-1 py-3 border border-outline text-secondary rounded-lg font-semibold hover:bg-surface-container-low transition-colors"
               >
                 Cancel
               </button>
@@ -416,6 +374,7 @@ export default function News({ user }) {
           </form>
         </div>
       )}
-    </>
+    </div>
   );
 }
+

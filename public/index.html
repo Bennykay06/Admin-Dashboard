@@ -15,6 +15,109 @@
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
     -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@100..900&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        try {
+            tailwind.config = {
+                darkMode: "class",
+                theme: {
+                    extend: {
+                        "colors": {
+                            "on-secondary-container": "#636263",
+                            "surface-container-lowest": "#ffffff",
+                            "on-secondary": "#ffffff",
+                            "on-error": "#ffffff",
+                            "on-tertiary-container": "#a9d1ff",
+                            "primary-fixed": "#ffdad6",
+                            "on-secondary-fixed-variant": "#474647",
+                            "surface-container": "#efeeeb",
+                            "on-secondary-fixed": "#1b1b1c",
+                            "tertiary-container": "#005b94",
+                            "primary": "#86000d",
+                            "deep-charcoal": "#1A1A1B",
+                            "secondary": "#5f5e5f",
+                            "on-surface-variant": "#5b403d",
+                            "on-primary-fixed": "#410003",
+                            "error-container": "#ffdad6",
+                            "error": "#ba1a1a",
+                            "status-critical": "#AF101A",
+                            "outline": "#8f6f6c",
+                            "on-tertiary-fixed-variant": "#004a79",
+                            "surface-dim": "#dbdad7",
+                            "on-background": "#1b1c1a",
+                            "tertiary-fixed": "#d0e4ff",
+                            "status-alert": "#FF8C00",
+                            "on-tertiary": "#ffffff",
+                            "on-primary": "#ffffff",
+                            "tertiary-fixed-dim": "#9acbff",
+                            "inverse-on-surface": "#f2f1ee",
+                            "primary-container": "#af101a",
+                            "on-tertiary-fixed": "#001d34",
+                            "background": "#faf9f6",
+                            "status-warning": "#FFBF00",
+                            "surface-bright": "#faf9f6",
+                            "primary-fixed-dim": "#ffb3ac",
+                            "on-error-container": "#93000a",
+                            "on-surface": "#1b1c1a",
+                            "status-info": "#1182CE",
+                            "surface-container-low": "#f4f3f0",
+                            "surface-container-highest": "#e3e2df",
+                            "inverse-primary": "#ffb3ac",
+                            "status-success": "#15A654",
+                            "secondary-fixed-dim": "#c8c6c7",
+                            "on-primary-fixed-variant": "#930010",
+                            "secondary-container": "#e2dfe0",
+                            "surface": "#faf9f6",
+                            "surface-tint": "#ba1b20",
+                            "on-primary-container": "#ffbdb7",
+                            "secondary-fixed": "#e5e2e3",
+                            "tertiary": "#00436e",
+                            "outline-variant": "#e4beba",
+                            "inverse-surface": "#2f312f",
+                            "surface-variant": "#e3e2df",
+                            "surface-container-high": "#e9e8e5"
+                        },
+                        "borderRadius": {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                        },
+                        "spacing": {
+                            "unit": "4px",
+                            "container-max": "1440px",
+                            "gutter": "24px",
+                            "margin-desktop": "48px",
+                            "margin-mobile": "16px"
+                        },
+                        "fontFamily": {
+                            "headline-md": ["Outfit"],
+                            "body-lg": ["Outfit"],
+                            "label-sm": ["Outfit"],
+                            "headline-xl": ["Outfit"],
+                            "body-md": ["Outfit"],
+                            "label-md": ["Outfit"],
+                            "headline-lg-mobile": ["Outfit"],
+                            "title-md": ["Outfit"],
+                            "headline-lg": ["Outfit"]
+                        },
+                        "fontSize": {
+                            "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                            "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                            "label-sm": ["11px", {"lineHeight": "14px", "fontWeight": "700"}],
+                            "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                            "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                            "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                            "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                            "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                            "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                        }
+                    },
+                },
+            }
+        } catch (_e) {}
+    </script>
     <!--
       Notice the use of %PUBLIC_URL% in the tags above.
       It will be replaced with the URL of the `public` folder during the build.
@@ -24,7 +127,7 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <title>React App</title>
+    <title>KNUST Campus Facilities Management</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

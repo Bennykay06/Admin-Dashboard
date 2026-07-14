@@ -4,7 +4,8 @@ import {
   getPersistedStaff, 
   savePersistedStaff, 
   getPersistedAdmins, 
-  savePersistedAdmins 
+  savePersistedAdmins,
+  getPersistedHalls
 } from '../data/mockData';
 
 // Copy helper that works outside secure contexts (e.g. http:// on a LAN IP),
@@ -42,6 +43,7 @@ export default function Staff({ user }) {
   const isSuperAdmin = user?.role === 'super_admin';
 
   const [staff, setStaff] = useState(() => getPersistedStaff());
+  const [halls] = useState(() => getPersistedHalls());
   const [showModal, setShowModal] = useState(false);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [generatedCredentials, setGeneratedCredentials] = useState(null);
@@ -53,7 +55,8 @@ export default function Staff({ user }) {
     role: 'technician',
     hallId: '1',
     specialty: 'electrical',
-    status: 'active'
+    status: 'active',
+    password: ''
   });
 
   // ===== ADD STAFF =====
@@ -65,7 +68,8 @@ export default function Staff({ user }) {
       role: 'technician',
       hallId: user?.hallId || '1',
       specialty: 'electrical',
-      status: 'active'
+      status: 'active',
+      password: ''
     });
     setShowModal(true);
   };
@@ -86,7 +90,8 @@ export default function Staff({ user }) {
       role: adminObj.role || 'technician',
       hallId: adminObj.hallId || '1',
       specialty,
-      status: staffMember.status
+      status: staffMember.status,
+      password: ''
     });
     setShowModal(true);
   };
@@ -203,16 +208,10 @@ export default function Staff({ user }) {
       setShowModal(false);
     } else {
       // Add new staff
-      // Generate 10-character password with letters, numbers, and symbols
-      const generateRandomPassword = () => {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+~}{[]:;?><';
-        let password = '';
-        for (let i = 0; i < 10; i++) {
-          password += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return password;
-      };
-      const generatedPassword = generateRandomPassword();
+      if (!formData.password) {
+        alert('Please enter a Password.');
+        return;
+      }
       const newStaffId = 't' + Date.now().toString();
 
       const newStaffMember = {
@@ -230,7 +229,7 @@ export default function Staff({ user }) {
       const newAdminObj = {
         id: newStaffId,
         email,
-        password: generatedPassword,
+        password: formData.password,
         name: formData.name,
         role: loginRole,
         hallId: formData.hallId,
@@ -252,7 +251,7 @@ export default function Staff({ user }) {
         name: formData.name,
         role: staffRole,
         email,
-        password: generatedPassword,
+        password: formData.password,
         portal: loginPortal
       });
 
@@ -275,28 +274,26 @@ export default function Staff({ user }) {
   // ===== RESET CREDENTIALS =====
   const handleResetCredentials = (member) => {
     if (window.confirm(`Are you sure you want to reset credentials for ${member.name}?`)) {
+      const newPassword = window.prompt(`Enter new password for ${member.name}:`);
+      if (newPassword === null) return; // user cancelled
+      const trimmed = newPassword.trim();
+      if (!trimmed) {
+        alert('Password cannot be empty.');
+        return;
+      }
+
       const currentAdmins = getPersistedAdmins();
       const adminIndex = currentAdmins.findIndex(a => a.email.toLowerCase() === member.email.toLowerCase());
       
       if (adminIndex !== -1) {
-        const generateRandomPassword = () => {
-          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+~}{[]:;?><';
-          let password = '';
-          for (let i = 0; i < 10; i++) {
-            password += chars.charAt(Math.floor(Math.random() * chars.length));
-          }
-          return password;
-        };
-        const newPassword = generateRandomPassword();
-        
-        currentAdmins[adminIndex].password = newPassword;
+        currentAdmins[adminIndex].password = trimmed;
         savePersistedAdmins(currentAdmins);
         
         setGeneratedCredentials({
           name: member.name,
           role: member.role,
           email: member.email,
-          password: newPassword,
+          password: trimmed,
           portal: 'Admin Portal'
         });
         
@@ -307,244 +304,338 @@ export default function Staff({ user }) {
     }
   };
 
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState(''); // '', 'admin', 'technician'
+
   const currentAdmins = getPersistedAdmins();
-  const displayedStaff = staff.filter(member => {
+  const baseStaff = staff.filter(member => {
     if (isSuperAdmin) return true; // Super admin sees all staff
     const adminObj = currentAdmins.find(a => a.email.toLowerCase() === member.email.toLowerCase());
     // Hall admins manage only the technicians in their own hall.
     return adminObj?.hallId === user.hallId && adminObj?.role === 'technician';
   });
 
+  // Apply filters
+  const displayedStaff = baseStaff.filter(member => {
+    const matchesSearch = member.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          member.email.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const roleLower = member.role.toLowerCase();
+    const matchesRole = roleFilter === '' ||
+      (roleFilter === 'admin' && roleLower.includes('admin')) ||
+      (roleFilter === 'technician' && roleLower.includes('technician'));
+
+    return matchesSearch && matchesRole;
+  });
+
+  const getInitials = (name) => {
+    if (!name) return 'ST';
+    const parts = name.trim().toUpperCase().split(/\s+/);
+    if (parts.length >= 2) {
+      return parts[0][0] + parts[1][0];
+    }
+    return parts[0].slice(0, 2);
+  };
+
+  // Metrics calculation
+  const totalStaffCount = displayedStaff.length;
+  const activeStaffCount = displayedStaff.filter(s => s.status === 'active').length;
+  const techniciansCount = displayedStaff.filter(s => s.role.toLowerCase().includes('technician')).length;
+  const adminCount = displayedStaff.filter(s => s.role.toLowerCase().includes('admin')).length;
+
   return (
-    <>
-      <div className="page-header">
+    <div className="font-body-md">
+      {/* Page Header */}
+      <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
         <div>
-          <h2 className="page-title">👤 Staff Management</h2>
-          <p className="page-subtitle">Manage maintenance staff and administrators</p>
+          <h2 className="font-headline-xl text-headline-xl font-bold text-deep-charcoal tracking-tight">Staff Management</h2>
+          <p className="text-secondary font-body-lg mt-1">
+            {isSuperAdmin 
+              ? 'Institutional records for all personnel and operational technicians'
+              : `Personnel and operational technicians in ${user?.hallName}`
+            }
+          </p>
         </div>
-        <div className="hall-badge">
-          <span className="hall-tag">🏛️ {user?.hallName || 'All Halls'}</span>
+      </header>
+
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+        <div className="bg-white border border-outline p-6 rounded shadow-sm">
+          <div className="flex justify-between items-start mb-2">
+            <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Total Staff</p>
+            <span className="material-symbols-outlined text-secondary text-lg">groups</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <p className="text-4xl font-black italic">{totalStaffCount}</p>
+            <p className="text-[10px] font-bold text-black border-b border-black uppercase">Personnel</p>
+          </div>
+        </div>
+        <div className="bg-white border border-outline p-6 rounded shadow-sm">
+          <div className="flex justify-between items-start mb-2">
+            <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Active On-Duty</p>
+            <span className="material-symbols-outlined text-secondary text-lg">check_circle</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <p className="text-4xl font-black italic">{activeStaffCount}</p>
+            <p className="text-[10px] font-bold text-secondary uppercase">Deployable</p>
+          </div>
+        </div>
+        <div className="bg-white border border-outline p-6 rounded shadow-sm">
+          <div className="flex justify-between items-start mb-2">
+            <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Technicians</p>
+            <span className="material-symbols-outlined text-secondary text-lg">engineering</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <p className="text-4xl font-black italic">{techniciansCount}</p>
+            <p className="text-[10px] font-bold text-secondary uppercase">Operational</p>
+          </div>
+        </div>
+        <div className="bg-white border border-outline p-6 rounded shadow-sm">
+          <div className="flex justify-between items-start mb-2">
+            <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Admin Staff</p>
+            <span className="material-symbols-outlined text-secondary text-lg">admin_panel_settings</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <p className="text-4xl font-black italic">{adminCount}</p>
+            <p className="text-[10px] font-bold text-secondary uppercase">Supervisory</p>
+          </div>
         </div>
       </div>
 
-      {/* Add Staff Button */}
-      <div style={{ marginBottom: '16px' }}>
-        <button className="btn btn-primary" onClick={handleAddStaff}>
-          + Add Staff
+      {/* Table Controls */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
+        <div className="flex flex-1 items-center gap-4 w-full md:max-w-2xl">
+          <div className="relative flex-1">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary">search</span>
+            <input 
+              className="w-full pl-12 pr-4 py-3 bg-white border border-outline rounded-xl focus:ring-1 focus:ring-deep-charcoal focus:border-deep-charcoal outline-none transition-all text-sm font-medium" 
+              placeholder="Search by name or email..." 
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          
+          <div className="relative">
+            <select 
+              className="appearance-none pl-4 pr-10 py-3 bg-white border border-outline rounded-xl focus:ring-1 focus:ring-deep-charcoal outline-none cursor-pointer text-sm font-medium min-w-[150px]"
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+            >
+              <option value="">All Roles</option>
+              <option value="admin">Admin</option>
+              <option value="technician">Technician</option>
+            </select>
+            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">expand_more</span>
+          </div>
+        </div>
+
+        <button 
+          className="flex items-center gap-2 px-6 py-3 bg-deep-charcoal text-white rounded-xl text-sm font-bold hover:bg-black transition-all shadow-sm"
+          onClick={handleAddStaff}
+        >
+          <span className="material-symbols-outlined text-[20px]">person_add</span>
+          Register New Personnel
         </button>
       </div>
 
       {/* Staff Table */}
-      <div className="table-container">
-        <div className="table-wrapper">
-          <table className="table">
-            <thead>
+      <div className="bg-white border border-outline rounded shadow-sm overflow-hidden">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-neutral-50/50 border-b border-outline">
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary">Personnel Identifier</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary">Classification</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary">Registry Scope</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary">Status</th>
+              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary text-right">Commands</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-outline text-sm">
+            {displayedStaff.length === 0 ? (
               <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <td colSpan="5" className="px-6 py-10 text-center text-secondary font-medium">
+                  No staff members found. Click "Register New Personnel" to add one.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {displayedStaff.length === 0 ? (
-                <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-                    No staff members found. Click "Add Staff" to add one.
-                  </td>
-                </tr>
-              ) : (
-                displayedStaff.map((member) => (
-                  <tr key={member.id}>
-                    <td style={{ fontWeight: '500' }}>{member.name}</td>
-                    <td>{member.email}</td>
-                    <td>
-                      <span style={{
-                        background: member.role?.includes('Admin') ? '#ECFDF5' : '#DBEAFE',
-                        color: member.role?.includes('Admin') ? '#065F46' : '#1E40AF',
-                        padding: '2px 10px',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        fontWeight: '500'
-                      }}>
+            ) : (
+              displayedStaff.map((member) => {
+                const adminObj = currentAdmins.find(a => a.email.toLowerCase() === member.email.toLowerCase()) || {};
+                const registryHall = adminObj.hallName || 'All Halls';
+                const isMemberAdmin = member.role.toLowerCase().includes('admin');
+                const isActive = member.status === 'active';
+                
+                return (
+                  <tr key={member.id} className="hover:bg-neutral-50 transition-colors">
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded flex items-center justify-center font-black text-xs ${
+                          isMemberAdmin ? 'bg-black text-white' : 'border-2 border-black text-black'
+                        }`}>
+                          {getInitials(member.name)}
+                        </div>
+                        <div>
+                          <span className="block font-black text-sm tracking-tight uppercase italic text-deep-charcoal">{member.name}</span>
+                          <span className="block text-[10px] text-secondary font-bold uppercase tracking-tighter">{member.email}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className={`inline-block px-3 py-1 text-[9px] font-black uppercase tracking-widest ${
+                        isMemberAdmin 
+                          ? 'bg-black text-white' 
+                          : 'border border-black text-black'
+                      }`}>
                         {member.role}
                       </span>
                     </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <label className="switch">
-                          <input 
-                            type="checkbox" 
-                            checked={member.status === 'active'} 
-                            onChange={() => toggleStatus(member.id)} 
-                          />
-                          <span className="slider"></span>
-                        </label>
-                        <span style={{ 
-                          fontSize: '13px', 
-                          fontWeight: '500', 
-                          color: member.status === 'active' ? '#10B981' : '#6B7280' 
-                        }}>
-                          {member.status === 'active' ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
+                    <td className="px-6 py-5 text-xs font-bold text-on-surface uppercase tracking-wide">
+                      {registryHall}
                     </td>
-                    <td>
+                    <td className="px-6 py-5">
                       <button 
-                        className="btn btn-secondary" 
-                        style={{ marginRight: '8px', padding: '4px 12px', fontSize: '12px' }}
+                        onClick={() => toggleStatus(member.id)}
+                        className="flex items-center gap-2"
+                        title="Toggle status"
+                      >
+                        <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-black' : 'border border-black bg-white'}`}></span>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${isActive ? 'text-black' : 'text-secondary'}`}>
+                          {isActive ? 'Active On-Duty' : 'Off-Duty / Leave'}
+                        </span>
+                      </button>
+                    </td>
+                    <td className="px-6 py-5 text-right space-x-2">
+                      <button 
+                        className="p-2 hover:bg-black hover:text-white rounded transition-all border border-transparent text-secondary"
                         onClick={() => handleEditStaff(member)}
+                        title="Edit Details"
                       >
-                        ✏️ Edit
+                        <span className="material-symbols-outlined text-[20px]">edit_note</span>
                       </button>
                       <button 
-                        className="btn btn-warning" 
-                        style={{ marginRight: '8px', padding: '4px 12px', fontSize: '12px' }}
+                        className="p-2 hover:bg-black hover:text-white rounded transition-all border border-transparent text-secondary"
                         onClick={() => handleResetCredentials(member)}
+                        title="Reset Password"
                       >
-                        🔑 Reset
+                        <span className="material-symbols-outlined text-[20px]">shield_person</span>
                       </button>
                       <button 
-                        className="btn btn-danger" 
-                        style={{ padding: '4px 12px', fontSize: '12px' }}
+                        className="p-2 hover:bg-black hover:text-white rounded transition-all border border-transparent text-secondary hover:text-error"
                         onClick={() => handleDeleteStaff(member.id)}
+                        title="Delete Personnel"
                       >
-                        🗑️ Delete
+                        <span className="material-symbols-outlined text-[20px]">delete_sweep</span>
                       </button>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
+
 
       {/* ===== ADD/EDIT MODAL ===== */}
       {showModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '16px'
-        }}>
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: '16px',
-            padding: '32px',
-            width: '100%',
-            maxWidth: '500px',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-          }}>
-            <h2 style={{ marginBottom: '20px', fontSize: '22px', fontWeight: '700' }}>
-              {editingStaff ? '✏️ Edit Staff' : '➕ Add New Staff'}
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="modal-content bg-white border border-border-medium rounded-xl p-8 max-w-md w-full shadow-2xl">
+            <h2 className="text-xl font-bold text-deep-charcoal mb-6 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[22px]">{editingStaff ? 'edit' : 'person_add'}</span>
+              {editingStaff ? 'Edit Staff' : 'Add New Staff'}
             </h2>
 
-            <div className="form-group">
-              <label>Full Name *</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., John Doe"
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  outline: 'none'
-                }}
-                required
-              />
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-black/60 block ml-0.5">Full Name *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., John Doe"
+                  className="w-full premium-input"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-black/60 block ml-0.5">Hall *</label>
+                <div className="relative">
+                  <select
+                    value={formData.hallId}
+                    onChange={(e) => setFormData({ ...formData, hallId: e.target.value })}
+                    disabled={!!user?.hallId}
+                    className="w-full premium-select appearance-none cursor-pointer"
+                  >
+                    {halls.map((hall) => (
+                      <option key={hall.id} value={hall.id}>
+                        {hall.name}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">expand_more</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-black/60 block ml-0.5">Role / Specialty *</label>
+                <div className="relative">
+                  <select
+                    value={formData.specialty}
+                    onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
+                    className="w-full premium-select appearance-none cursor-pointer"
+                  >
+                    {isSuperAdmin && <option value="hall-admin">Hall Admin</option>}
+                    <option value="electrical">Electrical</option>
+                    <option value="plumbing">Plumbing</option>
+                    <option value="carpentry">Carpentry</option>
+                    <option value="masonry">Masonry</option>
+                  </select>
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">expand_more</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-black/60 block ml-0.5">Status</label>
+                <div className="relative">
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full premium-select appearance-none cursor-pointer"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">expand_more</span>
+                </div>
+              </div>
+
+              {!editingStaff && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-black/60 block ml-0.5">Password *</label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Enter initial password"
+                    className="w-full premium-input"
+                    required
+                  />
+                </div>
+              )}
             </div>
 
-            <div className="form-group">
-              <label>Hall *</label>
-              <select
-                value={formData.hallId}
-                onChange={(e) => setFormData({ ...formData, hallId: e.target.value })}
-                disabled={!!user?.hallId}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  background: !!user?.hallId ? '#F3F4F6' : 'white',
-                  cursor: !!user?.hallId ? 'not-allowed' : 'default'
-                }}
-              >
-                <option value="1">Unity Hall</option>
-                <option value="2">Independence Hall</option>
-                <option value="3">Republic Hall</option>
-                <option value="4">Africa Hall</option>
-                <option value="5">University Hall</option>
-                <option value="6">Queen Elizabeth II Hall</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Role / Specialty *</label>
-              <select
-                value={formData.specialty}
-                onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  background: 'white'
-                }}
-              >
-                {isSuperAdmin && <option value="hall-admin">Hall Admin</option>}
-                <option value="electrical">Electrical</option>
-                <option value="plumbing">Plumbing</option>
-                <option value="carpentry">Carpentry</option>
-                <option value="masonry">Masonry</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  background: 'white'
-                }}
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+            <div className="flex gap-4 mt-8">
               <button
-                className="btn btn-primary"
+                className="flex-1 py-3 bg-black hover:bg-neutral-900 text-white rounded-lg font-bold text-sm transition-all shadow-sm"
                 onClick={handleSaveStaff}
-                style={{ flex: 1 }}
               >
                 {editingStaff ? 'Update Staff' : 'Add Staff'}
               </button>
               <button
-                className="btn btn-secondary"
+                className="flex-1 py-3 border border-border-medium text-secondary rounded-lg font-bold text-sm hover:bg-surface-low transition-colors"
                 onClick={() => setShowModal(false)}
-                style={{ flex: 1 }}
               >
                 Cancel
               </button>
@@ -555,112 +646,108 @@ export default function Staff({ user }) {
 
       {/* ===== CREDENTIALS GENERATION DISPLAY MODAL ===== */}
       {showCredentialsModal && generatedCredentials && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.6)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 99999,
-          padding: '16px'
-        }}>
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: '16px',
-            padding: '32px',
-            width: '100%',
-            maxWidth: '480px',
-            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-            borderTop: '5px solid #10B981',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔑</div>
-            <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="modal-content bg-white border border-border-medium rounded-xl p-8 max-w-md w-full shadow-2xl text-center">
+            <div className="w-12 h-12 bg-deep-charcoal text-white rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-[24px]">key</span>
+            </div>
+            <h2 className="text-xl font-bold text-deep-charcoal mb-2">
               Credentials Generated!
             </h2>
-            <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '24px' }}>
-              The new staff member has been added to the system. Share these credentials for them to sign in.
+            <p className="text-xs text-secondary mb-6">
+              Account created. Share these credentials for them to sign in.
             </p>
 
-            <div style={{
-              background: '#F3F4F6',
-              borderRadius: '8px',
-              padding: '20px',
-              textAlign: 'left',
-              marginBottom: '24px',
-              border: '1px dashed #D1D5DB',
-              wordBreak: 'break-all'
-            }}>
-              <div style={{ marginBottom: '12px' }}>
-                <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600', display: 'block', textTransform: 'uppercase' }}>
-                  Name
-                </span>
-                <span style={{ fontSize: '15px', color: '#1F2937', fontWeight: '500' }}>
-                  {generatedCredentials.name}
-                </span>
+            <div className="bg-surface-low border border-border-medium rounded-lg p-5 text-left mb-6 space-y-4">
+              <div>
+                <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block mb-0.5">Name</span>
+                <span className="text-sm font-semibold text-deep-charcoal">{generatedCredentials.name}</span>
               </div>
-              <div style={{ marginBottom: '12px' }}>
-                <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600', display: 'block', textTransform: 'uppercase' }}>
-                  Role / Specialty
-                </span>
-                <span style={{ fontSize: '15px', color: '#1F2937', fontWeight: '500' }}>
-                  {generatedCredentials.role}
-                </span>
+              <div>
+                <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block mb-0.5">Role / Specialty</span>
+                <span className="text-sm font-semibold text-deep-charcoal">{generatedCredentials.role}</span>
               </div>
-              <div style={{ marginBottom: '12px' }}>
-                <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600', display: 'block', textTransform: 'uppercase' }}>
-                  Email Address
-                </span>
-                <span style={{ fontSize: '15px', color: '#1F2937', fontWeight: '600', fontFamily: 'monospace' }}>
-                  {generatedCredentials.email}
-                </span>
+              <div>
+                <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block mb-0.5">Email Address</span>
+                <span className="text-sm font-mono font-bold text-deep-charcoal">{generatedCredentials.email}</span>
               </div>
-              <div style={{ marginBottom: '12px' }}>
-                <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600', display: 'block', textTransform: 'uppercase' }}>
-                  Temporary Password
-                </span>
-                <span style={{ fontSize: '16px', color: '#10B981', fontWeight: '700', fontFamily: 'monospace' }}>
-                  {generatedCredentials.password}
-                </span>
+              <div>
+                <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block mb-0.5">Temporary Password</span>
+                <span className="text-sm font-mono font-bold text-deep-charcoal">{generatedCredentials.password}</span>
               </div>
               {generatedCredentials.portal && (
                 <div>
-                  <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600', display: 'block', textTransform: 'uppercase' }}>
-                    Sign In Via
-                  </span>
-                  <span style={{ fontSize: '15px', color: '#1F2937', fontWeight: '600' }}>
-                    {generatedCredentials.portal}
-                  </span>
+                  <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block mb-0.5">Sign In Via</span>
+                  <span className="text-sm font-semibold text-deep-charcoal">{generatedCredentials.portal}</span>
                 </div>
               )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button
-                className="btn btn-primary"
-                onClick={() => {
-                  const copyText = `Name: ${generatedCredentials.name}\nRole: ${generatedCredentials.role}\nEmail: ${generatedCredentials.email}\nPassword: ${generatedCredentials.password}${generatedCredentials.portal ? `\nSign in via: ${generatedCredentials.portal}` : ''}`;
-                  copyToClipboard(copyText);
-                }}
-                style={{ width: '100%' }}
-              >
-                📋 Copy Details
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => {
-                  setShowCredentialsModal(false);
-                  setGeneratedCredentials(null);
-                }}
-                style={{ width: '100%' }}
-              >
-                Close
-              </button>
-            </div>
+            {/* Password Reset Link Generation & Sharing Section */}
+            {(() => {
+              const resetToken = btoa(JSON.stringify({
+                email: generatedCredentials.email,
+                expiresAt: Date.now() + 30 * 60 * 1000 // 30 minutes
+              }));
+              const resetLink = `${window.location.origin}/login?reset=true&token=${resetToken}`;
+              const shareMessage = `Hi ${generatedCredentials.name},\n\nYour account on the KNUST Campus Facilities Admin Portal has been created.\n\n*Credentials*:\nRole: ${generatedCredentials.role}\nEmail: ${generatedCredentials.email}\nTemporary Password: ${generatedCredentials.password}\n\n*Password Reset Link (Expires in 30 minutes)*:\n${resetLink}\n\nPlease reset your password immediately upon clicking this link.`;
+              const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`;
+
+              return (
+                <div className="space-y-6">
+                  <div className="border-t border-border-medium pt-5 text-left space-y-2">
+                    <span className="text-[10px] text-status-critical-text font-bold uppercase tracking-widest block">
+                      ⏳ Password Reset Link (Expires in 30m)
+                    </span>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={resetLink}
+                        className="flex-1 px-3 py-2 bg-status-critical-bg border border-status-critical-border rounded-lg text-xs font-mono text-status-critical-text outline-none select-all"
+                        onClick={(e) => e.target.select()}
+                      />
+                      <button
+                        type="button"
+                        className="outline-btn py-2 px-3 text-xs"
+                        onClick={() => {
+                          copyToClipboard(resetLink);
+                        }}
+                      >
+                        Copy Link
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <button
+                      className="w-full py-3 bg-black hover:bg-neutral-900 text-white rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+                      onClick={() => {
+                        window.open(whatsappUrl, '_blank');
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.705 1.459h.008c6.56 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413" />
+                      </svg>
+                      Share on WhatsApp
+                    </button>
+
+                    <button
+                      className="w-full py-3 border border-border-medium hover:bg-surface-low text-secondary rounded-lg font-bold text-sm transition-colors"
+                      onClick={() => {
+                        setShowCredentialsModal(false);
+                        setGeneratedCredentials(null);
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

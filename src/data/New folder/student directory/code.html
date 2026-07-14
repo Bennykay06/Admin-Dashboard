@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SnapFix | Student Directory</title>
+<!-- Google Fonts: Outfit for technical precision -->
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols for Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-fixed-dim": "#ffb3ac",
+                    "status-success": "#15A654",
+                    "surface-bright": "#faf9f6",
+                    "surface-container-high": "#e9e8e5",
+                    "secondary": "#5f5e5f",
+                    "surface-container-highest": "#e3e2df",
+                    "primary-fixed": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "on-secondary-fixed": "#1b1b1c",
+                    "status-info": "#1182CE",
+                    "on-tertiary-fixed-variant": "#004a79",
+                    "on-primary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "surface-tint": "#ba1b20",
+                    "inverse-primary": "#ffb3ac",
+                    "background": "#faf9f6",
+                    "secondary-fixed-dim": "#c8c6c7",
+                    "surface-container": "#efeeeb",
+                    "status-alert": "#FF8C00",
+                    "on-surface-variant": "#5b403d",
+                    "tertiary-container": "#005b94",
+                    "surface-variant": "#e3e2df",
+                    "status-critical": "#AF101A",
+                    "on-secondary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "on-secondary-container": "#636263",
+                    "tertiary-fixed": "#d0e4ff",
+                    "on-secondary-fixed-variant": "#474647",
+                    "inverse-surface": "#2f312f",
+                    "inverse-on-surface": "#f2f1ee",
+                    "on-surface": "#1b1c1a",
+                    "on-primary-fixed": "#410003",
+                    "primary": "#1A1A1B",
+                    "surface-container-low": "#f4f3f0",
+                    "status-warning": "#FFBF00",
+                    "on-primary-fixed-variant": "#930010",
+                    "surface-dim": "#dbdad7",
+                    "on-tertiary-container": "#a9d1ff",
+                    "on-tertiary-fixed": "#001d34",
+                    "on-primary-container": "#ffbdb7",
+                    "error": "#ba1a1a",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-container": "#1A1A1B",
+                    "on-background": "#1b1c1a",
+                    "secondary-container": "#e2dfe0",
+                    "deep-charcoal": "#1A1A1B",
+                    "surface": "#faf9f6",
+                    "outline-variant": "#e4beba",
+                    "outline": "#8f6f6c",
+                    "error-container": "#ffdad6",
+                    "tertiary": "#00436e",
+                    "tertiary-fixed-dim": "#9acbff",
+                    "secondary-fixed": "#e5e2e3"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-mobile": "16px",
+                    "gutter": "24px",
+                    "margin-desktop": "48px",
+                    "container-max": "1440px",
+                    "unit": "4px"
+            },
+            "fontFamily": {
+                    "headline-xl": ["Outfit"],
+                    "body-md": ["Outfit"],
+                    "headline-md": ["Outfit"],
+                    "headline-lg-mobile": ["Outfit"],
+                    "label-md": ["Outfit"],
+                    "title-md": ["Outfit"],
+                    "label-sm": ["Outfit"],
+                    "body-lg": ["Outfit"],
+                    "headline-lg": ["Outfit"]
+            },
+            "fontSize": {
+                    "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "label-sm": ["11px", {"lineHeight": "14px", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e3e2df;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #1A1A1B;
+        }
+        .data-table-container {
+            border-radius: 12px;
+            border: 1px solid #e3e2df;
+            background: #ffffff;
+            overflow: hidden;
+        }
+        .data-table th {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #5f5e5f;
+            padding: 16px 24px;
+            background: #f8f8f7;
+            font-weight: 600;
+            border-bottom: 1px solid #e3e2df;
+        }
+        .data-table td {
+            padding: 16px 24px;
+            border-bottom: 1px solid #f0efed;
+            vertical-align: middle;
+        }
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+        .data-table tr:hover {
+            background-color: #faf9f6;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md selection:bg-deep-charcoal selection:text-white">
+<div class="flex min-h-screen">
+<!-- Sidebar -->
+<aside class="fixed left-0 top-0 h-full w-64 bg-white border-r border-surface-container-highest flex flex-col z-50">
+<div class="p-8 pb-4">
+<div class="flex items-center gap-3 mb-12">
+<div class="w-10 h-10 bg-deep-charcoal flex items-center justify-center rounded-xl shadow-sm">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">architecture</span>
+</div>
+<div>
+<h1 class="text-xl font-black tracking-tighter leading-none">SnapFix</h1>
+<p class="text-[10px] uppercase tracking-[0.2em] font-bold text-secondary mt-1">Super Admin</p>
+</div>
+</div>
+<nav class="space-y-1.5">
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-surface-container-low hover:text-deep-charcoal transition-all rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[22px]">dashboard</span>
+<span class="font-medium text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-surface-container-low hover:text-deep-charcoal transition-all rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[22px]">domain</span>
+<span class="font-medium text-sm">Campus Infrastructure</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-surface-container-low hover:text-deep-charcoal transition-all rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[22px]">campaign</span>
+<span class="font-medium text-sm">Announcements</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-surface-container-low hover:text-deep-charcoal transition-all rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[22px]">badge</span>
+<span class="font-medium text-sm">Staff Management</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-deep-charcoal text-white rounded-lg shadow-md shadow-black/10" href="#">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-medium text-sm">Student Directory</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-surface-container-low hover:text-deep-charcoal transition-all rounded-lg group" href="#">
+<span class="material-symbols-outlined text-[22px]">settings_suggest</span>
+<span class="font-medium text-sm">System Settings</span>
+</a>
+</nav>
+</div>
+<div class="mt-auto p-8 border-t border-surface-container-highest">
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-surface-container-low transition-all rounded-lg mb-2" href="#">
+<span class="material-symbols-outlined text-[22px]">help</span>
+<span class="text-sm font-medium">Help Center</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:text-error transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined text-[22px]">logout</span>
+<span class="text-sm font-medium">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="ml-64 flex-1 p-margin-desktop bg-background min-h-screen">
+<!-- Header -->
+<header class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-6">
+<div>
+<h2 class="font-headline-xl text-deep-charcoal tracking-tight">Student Directory</h2>
+<p class="text-secondary font-body-lg mt-1">Institutional records for all campus residents and reporters</p>
+</div>
+<div class="flex gap-4">
+<!-- Metrics -->
+<div class="bg-white border border-surface-container-highest p-4 px-6 rounded-2xl flex items-center gap-5 min-w-[200px] shadow-sm">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-deep-charcoal text-[28px]">group</span>
+</div>
+<div>
+<p class="text-[10px] text-secondary uppercase font-bold tracking-[0.1em] mb-1">Total Students</p>
+<p class="text-2xl font-bold text-deep-charcoal">14,208</p>
+</div>
+</div>
+<div class="bg-white border border-surface-container-highest p-4 px-6 rounded-2xl flex items-center gap-5 min-w-[200px] shadow-sm">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-deep-charcoal text-[28px]">record_voice_over</span>
+</div>
+<div>
+<p class="text-[10px] text-secondary uppercase font-bold tracking-[0.1em] mb-1">Active Reporters</p>
+<p class="text-2xl font-bold text-deep-charcoal">1,894</p>
+</div>
+</div>
+</div>
+</header>
+<!-- Actions / Filters -->
+<div class="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
+<div class="flex flex-1 items-center gap-4 w-full md:max-w-2xl">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary">search</span>
+<input class="w-full pl-12 pr-4 py-3 bg-white border border-surface-container-highest rounded-xl focus:ring-1 focus:ring-deep-charcoal focus:border-deep-charcoal outline-none transition-all text-sm font-medium" placeholder="Search by name, index number, or room..." type="text"/>
+</div>
+<div class="relative">
+<select class="appearance-none pl-4 pr-10 py-3 bg-white border border-surface-container-highest rounded-xl focus:ring-1 focus:ring-deep-charcoal outline-none cursor-pointer text-sm font-medium min-w-[180px]">
+<option>All Residential Halls</option>
+<option>Unity Hall</option>
+<option>Africa Hall</option>
+<option>Independence Hall</option>
+<option>University Hall</option>
+<option>Republic Hall</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">expand_more</span>
+</div>
+</div>
+<button class="flex items-center gap-2 px-6 py-3 bg-white border border-surface-container-highest text-deep-charcoal rounded-xl text-sm font-bold hover:bg-surface-container-low transition-all shadow-sm">
+<span class="material-symbols-outlined text-[20px]">download</span>
+                Export CSV
+            </button>
+</div>
+<!-- Directory Table -->
+<div class="data-table-container shadow-sm">
+<table class="w-full text-left border-collapse data-table">
+<thead>
+<tr>
+<th>Student Name</th>
+<th>Index Number</th>
+<th>Residential Hall</th>
+<th>Email Address</th>
+<th class="text-center">Reports</th>
+<th>Status</th>
+<th class="text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="text-sm">
+<!-- Row 1 -->
+<tr class="transition-colors">
+<td>
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-full bg-deep-charcoal text-white flex items-center justify-center font-bold text-xs">KM</div>
+<div>
+<p class="font-bold text-deep-charcoal">Kwame Mensah</p>
+<p class="text-[11px] text-secondary">Joined Sept 2021</p>
+</div>
+</div>
+</td>
+<td class="font-medium text-secondary">20784231</td>
+<td class="text-deep-charcoal">Unity Hall, B-402</td>
+<td class="text-secondary">k.mensah@st.knust.edu.gh</td>
+<td class="text-center">
+<span class="bg-surface-container text-deep-charcoal px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-surface-container-highest">12</span>
+</td>
+<td>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-status-success/10 text-status-success text-[11px] font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-status-success"></span>
+                                Resolved
+                            </span>
+</td>
+<td class="text-right">
+<button class="p-1.5 hover:bg-surface-container-low rounded-lg transition-colors text-secondary hover:text-deep-charcoal">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="transition-colors">
+<td>
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-full bg-surface-container-highest text-deep-charcoal flex items-center justify-center font-bold text-xs">AS</div>
+<div>
+<p class="font-bold text-deep-charcoal">Abena Serwaa</p>
+<p class="text-[11px] text-secondary">Joined Aug 2022</p>
+</div>
+</div>
+</td>
+<td class="font-medium text-secondary">20819442</td>
+<td class="text-deep-charcoal">Africa Hall, 2-21</td>
+<td class="text-secondary">a.serwaa@st.knust.edu.gh</td>
+<td class="text-center">
+<span class="bg-surface-container text-deep-charcoal px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-surface-container-highest">03</span>
+</td>
+<td>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-status-alert/10 text-status-alert text-[11px] font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-status-alert"></span>
+                                Pending
+                            </span>
+</td>
+<td class="text-right">
+<button class="p-1.5 hover:bg-surface-container-low rounded-lg transition-colors text-secondary hover:text-deep-charcoal">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="transition-colors">
+<td>
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-full bg-deep-charcoal text-white flex items-center justify-center font-bold text-xs">YB</div>
+<div>
+<p class="font-bold text-deep-charcoal">Yaw Boateng</p>
+<p class="text-[11px] text-secondary">Joined Jan 2020</p>
+</div>
+</div>
+</td>
+<td class="font-medium text-secondary">20456123</td>
+<td class="text-deep-charcoal">Independence Hall, Annex A</td>
+<td class="text-secondary">y.boateng@st.knust.edu.gh</td>
+<td class="text-center">
+<span class="bg-surface-container text-deep-charcoal px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-surface-container-highest">07</span>
+</td>
+<td>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-status-info/10 text-status-info text-[11px] font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-status-info"></span>
+                                In Progress
+                            </span>
+</td>
+<td class="text-right">
+<button class="p-1.5 hover:bg-surface-container-low rounded-lg transition-colors text-secondary hover:text-deep-charcoal">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="transition-colors">
+<td>
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-full bg-surface-container-highest text-deep-charcoal flex items-center justify-center font-bold text-xs">ED</div>
+<div>
+<p class="font-bold text-deep-charcoal">Esi Dankwa</p>
+<p class="text-[11px] text-secondary">Joined Oct 2023</p>
+</div>
+</div>
+</td>
+<td class="font-medium text-secondary">20993012</td>
+<td class="text-deep-charcoal">Republic Hall, Block C</td>
+<td class="text-secondary">e.dankwa@st.knust.edu.gh</td>
+<td class="text-center">
+<span class="bg-surface-container text-deep-charcoal px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-surface-container-highest">01</span>
+</td>
+<td>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-status-alert/10 text-status-alert text-[11px] font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-status-alert"></span>
+                                Pending
+                            </span>
+</td>
+<td class="text-right">
+<button class="p-1.5 hover:bg-surface-container-low rounded-lg transition-colors text-secondary hover:text-deep-charcoal">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="transition-colors">
+<td>
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-full bg-deep-charcoal text-white flex items-center justify-center font-bold text-xs">KA</div>
+<div>
+<p class="font-bold text-deep-charcoal">Kofi Appiah</p>
+<p class="text-[11px] text-secondary">Joined Sept 2021</p>
+</div>
+</div>
+</td>
+<td class="font-medium text-secondary">20774321</td>
+<td class="text-deep-charcoal">University Hall, Main Hall</td>
+<td class="text-secondary">k.appiah@st.knust.edu.gh</td>
+<td class="text-center">
+<span class="bg-surface-container text-deep-charcoal px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-surface-container-highest">05</span>
+</td>
+<td>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-status-success/10 text-status-success text-[11px] font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-status-success"></span>
+                                Resolved
+                            </span>
+</td>
+<td class="text-right">
+<button class="p-1.5 hover:bg-surface-container-low rounded-lg transition-colors text-secondary hover:text-deep-charcoal">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Pagination -->
+<div class="bg-surface-container-low px-6 py-4 flex items-center justify-between border-t border-surface-container-highest">
+<p class="text-[12px] font-medium text-secondary">Showing 1 to 5 of 14,208 entries</p>
+<div class="flex items-center gap-1">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white transition-all text-secondary disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-deep-charcoal text-white text-[12px] font-bold">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-[12px] font-medium text-secondary">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-[12px] font-medium text-secondary">3</button>
+<span class="px-2 text-secondary text-[12px]">...</span>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-[12px] font-medium text-secondary">2842</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white transition-all text-secondary">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Subtle row animation on load
+        const rows = document.querySelectorAll('tbody tr');
+        rows.forEach((row, index) => {
+            row.style.opacity = '0';
+            row.style.transform = 'translateY(4px)';
+            row.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+            row.style.transitionDelay = `${index * 30}ms`;
+            
+            setTimeout(() => {
+                row.style.opacity = '1';
+                row.style.transform = 'translateY(0)';
+            }, 50);
+        });
+    });
+</script>
+</body></html>

@@ -1,95 +1,88 @@
-// src/components/Sidebar.jsx - HIDE LOCATIONS FROM NON-SUPER ADMINS
+// src/components/Sidebar.jsx - MINIMALIST NAV WITH MATERIAL SYMBOLS
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 
 export default function Sidebar({ sidebarOpen, user }) {
   const isSuperAdmin = user?.role === 'super_admin';
+  const isTechnician = user?.role === 'technician';
 
-  // ===== TECHNICIAN NAVIGATION =====
-  const technicianNavItems = [
-    { path: '/', icon: '🔧', label: 'Dashboard' },
-    { path: '/news', icon: '📰', label: 'News' },
-    { path: '/settings', icon: '⚙️', label: 'Settings' },
-  ];
-
-  // ===== ADMIN NAVIGATION =====
-  const adminNavItems = [
-    { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/reports', icon: '📋', label: 'Reports' },
-    { path: '/news', icon: '📰', label: 'News' },
-    { path: '/students', icon: '👥', label: 'Students' },
-    { path: '/staff', icon: '👤', label: 'Staff' },
-    { path: '/settings', icon: '⚙️', label: 'Settings' },
-  ];
-
-  // ===== SUPER ADMIN NAVIGATION (Adds Locations & Settings) =====
-  const superAdminNavItems = [
-    { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/reports', icon: '📋', label: 'Reports' },
-    { path: '/news', icon: '📰', label: 'News' },
-    { path: '/students', icon: '👥', label: 'Students' },
-    { path: '/staff', icon: '👤', label: 'Staff' },
-    { path: '/locations', icon: '📍', label: 'Locations' },
-    { path: '/settings', icon: '⚙️', label: 'Settings' },
-  ];
-
-  // Choose navigation based on user role
-  let navItems;
-  if (user?.role === 'technician') {
-    navItems = technicianNavItems;
+  // ===== NAVIGATION ITEMS =====
+  let navItems = [];
+  if (isTechnician) {
+    navItems = [
+      { path: '/', icon: 'dashboard', label: 'Dashboard' },
+      { path: '/schedule-appointment', icon: 'handshake', label: 'Schedule Appointment' },
+      { path: '/update-report', icon: 'build_circle', label: 'Update Report' },
+      { path: '/news', icon: 'campaign', label: 'Announcements' },
+      { path: '/settings', icon: 'settings_suggest', label: 'System Settings' },
+    ];
   } else if (isSuperAdmin) {
-    navItems = superAdminNavItems;
+    navItems = [
+      { path: '/', icon: 'dashboard', label: 'Dashboard' },
+      { path: '/locations', icon: 'domain', label: 'Campus Infrastructure' },
+      { path: '/news', icon: 'campaign', label: 'Announcements' },
+      { path: '/staff', icon: 'badge', label: 'Staff Management' },
+      { path: '/students', icon: 'group', label: 'Student Directory' },
+      { path: '/settings', icon: 'settings_suggest', label: 'System Settings' },
+    ];
   } else {
-    navItems = adminNavItems;
+    // Hall Admin
+    navItems = [
+      { path: '/', icon: 'dashboard', label: 'Dashboard' },
+      { path: '/news', icon: 'campaign', label: 'Announcements' },
+      { path: '/staff', icon: 'badge', label: 'Staff Management' },
+      { path: '/students', icon: 'group', label: 'Student Directory' },
+      { path: '/settings', icon: 'settings_suggest', label: 'System Settings' },
+    ];
   }
 
   const getRoleDisplay = () => {
-    if (user?.role === 'super_admin') return '⭐ Super Admin';
-    if (user?.role === 'technician') return `🔧 ${user?.specialty || 'Technician'}`;
-    return '🏛️ Hall Admin';
+    if (user?.role === 'super_admin') return 'Super Admin';
+    if (user?.role === 'technician') return `${user?.specialty || 'Technician'} Specialist`;
+    return 'Hall Admin';
   };
 
   return (
-    <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-      <div className="sidebar-logo">
-        <div className="sidebar-logo-icon">SF</div>
-        <div>
-          <div className="sidebar-logo-text">SnapFix</div>
-          <div className="sidebar-logo-sub">Admin Panel</div>
+    <aside className={`fixed left-0 top-0 h-full w-64 bg-white border-r border-surface-container-highest flex flex-col z-50 transition-transform duration-300 md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className="p-8 pb-4">
+        <div className="flex items-center gap-3 mb-12">
+          <div className="w-10 h-10 bg-deep-charcoal flex items-center justify-center rounded-xl shadow-sm">
+            <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>architecture</span>
+          </div>
+          <div>
+            <h1 className="text-xl font-black tracking-tighter leading-none text-deep-charcoal">SnapFix</h1>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-secondary mt-1">{getRoleDisplay()}</p>
+          </div>
         </div>
+
+        <nav className="space-y-1.5">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-body-md text-sm font-medium ${
+                  isActive
+                    ? 'bg-deep-charcoal text-white shadow-md shadow-black/10'
+                    : 'text-secondary hover:bg-surface-container-low hover:text-deep-charcoal'
+                }`
+              }
+            >
+              <span className="material-symbols-outlined text-[22px]">{item.icon}</span>
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
+        </nav>
       </div>
 
-      {user && (
-        <div className="sidebar-user">
-          <div className="sidebar-user-name">{user.name}</div>
-          <div className="sidebar-user-role">{getRoleDisplay()}</div>
-          <div className="sidebar-user-hall">{user.hallName || 'All Halls'}</div>
-          {user.role === 'technician' && user.specialty && (
-            <div className="sidebar-user-hall" style={{ color: '#3B82F6' }}>
-              🛠️ {user.specialty} Specialist
-            </div>
-          )}
+      <div className="mt-auto p-8 border-t border-surface-container-highest">
+        <div className="flex items-center gap-3 mb-2 text-secondary">
+          <div className="overflow-hidden">
+            <p className="text-xs font-bold text-deep-charcoal truncate">{user?.name || 'User'}</p>
+            <p className="text-[10px] text-secondary truncate">{user?.email || 'user@snapfix.com'}</p>
+          </div>
         </div>
-      )}
-      
-      <nav className="sidebar-nav">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) => 
-              `sidebar-nav-item ${isActive ? 'active' : ''}`
-            }
-          >
-            <span className="nav-icon">{item.icon}</span>
-            <span className="nav-label">{item.label}</span>
-          </NavLink>
-        ))}
-      </nav>
-      
-      <div className="sidebar-footer">
-        © 2024 SnapFix Admin
       </div>
     </aside>
   );
-}
+}

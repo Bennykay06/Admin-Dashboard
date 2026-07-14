@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed-variant": "#004a79",
+                        "on-background": "#1b1c1a",
+                        "inverse-surface": "#2f312f",
+                        "on-secondary-fixed": "#1b1b1c",
+                        "deep-charcoal": "#000000",
+                        "outline-variant": "#E0E0E0",
+                        "on-secondary-fixed-variant": "#474647",
+                        "status-success": "#000000",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#000000",
+                        "tertiary": "#000000",
+                        "on-surface": "#000000",
+                        "secondary-fixed-dim": "#c8c6c7",
+                        "inverse-primary": "#ffffff",
+                        "tertiary-fixed": "#d0e4ff",
+                        "on-secondary-container": "#636263",
+                        "error-container": "#f1f1f1",
+                        "on-error": "#ffffff",
+                        "outline": "#000000",
+                        "surface-container-high": "#e9e8e5",
+                        "on-primary": "#ffffff",
+                        "primary-container": "#000000",
+                        "surface-dim": "#dbdad7",
+                        "on-secondary": "#ffffff",
+                        "error": "#000000",
+                        "on-tertiary": "#ffffff",
+                        "status-warning": "#000000",
+                        "primary": "#000000",
+                        "status-info": "#000000",
+                        "surface-variant": "#f4f4f4",
+                        "secondary-fixed": "#e5e2e3",
+                        "inverse-on-surface": "#f2f1ee",
+                        "surface-container-highest": "#e3e2df",
+                        "on-primary-container": "#ffffff",
+                        "status-critical": "#000000",
+                        "primary-fixed-dim": "#ffffff",
+                        "on-error-container": "#000000",
+                        "background": "#ffffff",
+                        "on-surface-variant": "#000000",
+                        "on-tertiary-fixed": "#000000",
+                        "surface-bright": "#ffffff",
+                        "surface": "#ffffff",
+                        "secondary-container": "#f4f4f4",
+                        "surface-container-low": "#f8f8f8",
+                        "on-tertiary-container": "#000000",
+                        "on-primary-fixed-variant": "#000000",
+                        "status-alert": "#000000",
+                        "on-primary-fixed": "#ffffff",
+                        "secondary": "#555555",
+                        "tertiary-container": "#000000",
+                        "surface-tint": "#000000",
+                        "surface-container": "#f1f1f1",
+                        "tertiary-fixed-dim": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "container-max": "1440px",
+                        "margin-mobile": "16px",
+                        "unit": "4px",
+                        "margin-desktop": "48px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Outfit"],
+                        "label-sm": ["Outfit"],
+                        "headline-lg": ["Outfit"],
+                        "body-md": ["Outfit"],
+                        "headline-xl": ["Outfit"],
+                        "title-md": ["Outfit"],
+                        "label-md": ["Outfit"],
+                        "headline-md": ["Outfit"],
+                        "headline-lg-mobile": ["Outfit"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-sm": ["11px", {"lineHeight": "14px", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .thin-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .thin-scrollbar::-webkit-scrollbar-thumb { background: #000; }
+        * { border-radius: 0 !important; }
+    </style>
+</head>
+<body class="bg-background text-on-surface overflow-x-hidden font-body-md">
+<!-- Sidebar Navigation -->
+<aside class="fixed left-0 top-0 h-screen w-72 flex flex-col p-8 bg-white border-r border-black z-50">
+<div class="mb-12">
+<h1 class="font-headline-md text-headline-md font-bold tracking-tighter uppercase">Snapfix</h1>
+<p class="font-label-md text-label-md text-secondary uppercase tracking-[0.2em] mt-1">Global Controller</p>
+</div>
+<nav class="flex-1 space-y-1 overflow-y-auto thin-scrollbar">
+<a class="flex items-center gap-3 text-white bg-black px-4 py-3 group" href="#">
+<span class="material-symbols-outlined scale-90">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 text-secondary hover:text-black hover:bg-surface-container-low transition-all px-4 py-3" href="#">
+<span class="material-symbols-outlined scale-90">domain</span>
+<span class="font-label-md text-label-md">Campus Infrastructure</span>
+</a>
+<a class="flex items-center gap-3 text-secondary hover:text-black hover:bg-surface-container-low transition-all px-4 py-3" href="#">
+<span class="material-symbols-outlined scale-90">campaign</span>
+<span class="font-label-md text-label-md">Announcements</span>
+</a>
+<a class="flex items-center gap-3 text-secondary hover:text-black hover:bg-surface-container-low transition-all px-4 py-3" href="#">
+<span class="material-symbols-outlined scale-90">groups</span>
+<span class="font-label-md text-label-md">Staff Management</span>
+</a>
+<a class="flex items-center gap-3 text-secondary hover:text-black hover:bg-surface-container-low transition-all px-4 py-3" href="#">
+<span class="material-symbols-outlined scale-90">school</span>
+<span class="font-label-md text-label-md">Student Directory</span>
+</a>
+<a class="flex items-center gap-3 text-secondary hover:text-black hover:bg-surface-container-low transition-all px-4 py-3 mt-8 border-t border-black/10 pt-8" href="#">
+<span class="material-symbols-outlined scale-90">settings</span>
+<span class="font-label-md text-label-md">System Settings</span>
+</a>
+</nav>
+<div class="pt-6 border-t border-black mt-auto flex items-center gap-3">
+<img class="w-10 h-10 border border-black object-cover grayscale" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7iLG4ePMRfQVczVCKxjT7nFXzJTLJJUTw8Omn4hjTnLZhx5Z6NzBrRluEtKysyrpzpN_ZcyXtA_QVvJ8H5_zTVdt-BCK4tFfrTz1JOWZeY923PJWLF7-z-e116Xiqehzoz4fbCZw9tvzTCEVDhbng6FpcxsNjqjtgb-g3Pyz4O_np02RHsbgVDO-aQyBN07sdgGvqz8m1paJankJY6c2ROWT192C-MYIx5Az5s7rXVJwSaqqecHN_lA"/>
+<div class="overflow-hidden">
+<p class="font-label-md text-label-md font-bold truncate uppercase">Super Admin</p>
+<p class="text-[10px] text-secondary truncate uppercase tracking-tighter">admin@snapfix.com</p>
+</div>
+</div>
+</aside>
+<!-- Top Bar -->
+<header class="fixed top-0 right-0 left-72 z-40 flex justify-between items-center px-8 bg-white border-b border-black h-16">
+<div class="flex items-center gap-8 flex-1">
+<h2 class="font-title-md text-title-md font-bold uppercase tracking-[0.1em]">KNUST Campus</h2>
+<div class="relative w-full max-w-xl">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-black scale-75">search</span>
+<input class="w-full bg-white border border-black px-10 py-2 text-body-md focus:ring-0 focus:border-black outline-none transition-all placeholder:text-secondary uppercase text-[12px] tracking-widest" placeholder="Search facilities, staff, or tickets..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-8">
+<button class="relative p-2 text-black hover:opacity-70 transition-opacity">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-black"></span>
+</button>
+<button class="font-label-md text-label-md text-black hover:opacity-70 transition-opacity font-bold uppercase tracking-widest">
+            Logout
+        </button>
+</div>
+</header>
+<main class="ml-72 p-10 min-h-screen mt-16 bg-[#FBFBFB]">
+<div class="max-w-container-max mx-auto">
+<!-- Dashboard Header -->
+<div class="mb-10 flex justify-between items-start">
+<div>
+<h3 class="font-headline-lg text-headline-lg font-bold uppercase tracking-tight">All Halls Overview</h3>
+<p class="font-body-md text-body-md text-secondary mt-2 border-l-2 border-black pl-4">System Master Control • Facility Performance Index</p>
+</div>
+<div class="bg-black text-white px-4 py-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-white scale-75">verified_user</span>
+<span class="text-[11px] font-bold uppercase tracking-[0.2em]">Super Admin</span>
+</div>
+</div>
+<!-- Hall Selector -->
+<div class="mb-10 overflow-x-auto thin-scrollbar pb-4 border-b border-black/10">
+<div class="flex gap-4 min-w-max">
+<button class="px-6 py-2 bg-black text-white font-label-md text-label-md uppercase tracking-widest transition-all">All Halls</button>
+<button class="px-6 py-2 bg-white border border-black text-black hover:bg-black hover:text-white font-label-md text-label-md uppercase tracking-widest transition-all">Unity Hall</button>
+<button class="px-6 py-2 bg-white border border-black text-black hover:bg-black hover:text-white font-label-md text-label-md uppercase tracking-widest transition-all">Independence</button>
+<button class="px-6 py-2 bg-white border border-black text-black hover:bg-black hover:text-white font-label-md text-label-md uppercase tracking-widest transition-all">Republic Hall</button>
+<button class="px-6 py-2 bg-white border border-black text-black hover:bg-black hover:text-white font-label-md text-label-md uppercase tracking-widest transition-all">Africa Hall</button>
+<button class="px-6 py-2 bg-white border border-black text-black hover:bg-black hover:text-white font-label-md text-label-md uppercase tracking-widest transition-all">University Hall</button>
+</div>
+</div>
+<!-- High-Density Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-5 gap-0 border border-black bg-black mb-12">
+<!-- Total Reports -->
+<div class="bg-white p-6 border-r border-black last:border-r-0">
+<div class="flex items-center justify-between mb-8">
+<span class="material-symbols-outlined text-black scale-100">analytics</span>
+<span class="text-black text-[10px] font-bold uppercase tracking-[0.2em]">Total</span>
+</div>
+<p class="text-secondary font-label-md uppercase tracking-widest mb-1">Total Reports</p>
+<span class="text-4xl font-bold text-black tracking-tighter">1,248</span>
+</div>
+<!-- Pending -->
+<div class="bg-white p-6 border-r border-black last:border-r-0">
+<div class="flex items-center justify-between mb-8">
+<span class="material-symbols-outlined text-black scale-100">hourglass_empty</span>
+<span class="text-black text-[10px] font-bold uppercase tracking-[0.2em]">Queue</span>
+</div>
+<p class="text-secondary font-label-md uppercase tracking-widest mb-1">Pending</p>
+<span class="text-4xl font-bold text-black tracking-tighter">182</span>
+</div>
+<!-- Scheduled -->
+<div class="bg-white p-6 border-r border-black last:border-r-0">
+<div class="flex items-center justify-between mb-8">
+<span class="material-symbols-outlined text-black scale-100">calendar_month</span>
+<span class="text-black text-[10px] font-bold uppercase tracking-[0.2em]">Planned</span>
+</div>
+<p class="text-secondary font-label-md uppercase tracking-widest mb-1">Scheduled</p>
+<span class="text-4xl font-bold text-black tracking-tighter">94</span>
+</div>
+<!-- In Progress -->
+<div class="bg-white p-6 border-r border-black last:border-r-0">
+<div class="flex items-center justify-between mb-8">
+<span class="material-symbols-outlined text-black scale-100">sync</span>
+<span class="text-black text-[10px] font-bold uppercase tracking-[0.2em]">Active</span>
+</div>
+<p class="text-secondary font-label-md uppercase tracking-widest mb-1">In Progress</p>
+<span class="text-4xl font-bold text-black tracking-tighter">300</span>
+</div>
+<!-- Resolved -->
+<div class="bg-white p-6">
+<div class="flex items-center justify-between mb-8">
+<span class="material-symbols-outlined text-black scale-100">check_circle</span>
+<span class="text-black text-[10px] font-bold uppercase tracking-[0.2em]">Done</span>
+</div>
+<p class="text-secondary font-label-md uppercase tracking-widest mb-1">Resolved</p>
+<span class="text-4xl font-bold text-black tracking-tighter">672</span>
+</div>
+</div>
+<!-- Master Reports Table -->
+<div class="bg-white border border-black overflow-hidden">
+<div class="px-8 py-6 border-b border-black flex justify-between items-center bg-white">
+<h4 class="font-title-md text-title-md font-bold uppercase tracking-widest">Global Recent Reports</h4>
+<button class="text-black hover:underline font-label-md text-label-md font-bold uppercase tracking-widest border-b-2 border-black">View All Logs</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="border-b border-black bg-black text-white">
+<th class="px-8 py-4 font-label-md text-label-md uppercase tracking-[0.2em]">Student</th>
+<th class="px-8 py-4 font-label-md text-label-md uppercase tracking-[0.2em]">Issue</th>
+<th class="px-8 py-4 font-label-md text-label-md uppercase tracking-[0.2em]">Hall</th>
+<th class="px-8 py-4 font-label-md text-label-md uppercase tracking-[0.2em]">Location</th>
+<th class="px-8 py-4 font-label-md text-label-md uppercase tracking-[0.2em] text-center">Status</th>
+<th class="px-8 py-4 font-label-md text-label-md uppercase tracking-[0.2em] text-center">Priority</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-black/10">
+<tr class="hover:bg-black/5 transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-black text-white flex items-center justify-center font-bold text-[12px]">KA</div>
+<span class="font-body-md font-bold uppercase text-[13px] tracking-tight">Kwame Appiah</span>
+</div>
+</td>
+<td class="px-8 py-6 font-body-md text-black/80">A/C Unit Failure - Leaking water</td>
+<td class="px-8 py-6">
+<span class="px-3 py-1 bg-white border border-black text-[10px] font-bold uppercase tracking-widest">Unity Hall</span>
+</td>
+<td class="px-8 py-6 font-body-md text-secondary">Block C, Room 402</td>
+<td class="px-8 py-6 text-center">
+<span class="px-3 py-1 bg-black text-white text-[9px] font-bold uppercase tracking-widest">In Progress</span>
+</td>
+<td class="px-8 py-6 text-center">
+<span class="px-3 py-1 border-2 border-black text-black text-[9px] font-bold uppercase tracking-widest">High</span>
+</td>
+</tr>
+<tr class="hover:bg-black/5 transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-black text-white flex items-center justify-center font-bold text-[12px]">MN</div>
+<span class="font-body-md font-bold uppercase text-[13px] tracking-tight">Mary Nyarko</span>
+</div>
+</td>
+<td class="px-8 py-6 font-body-md text-black/80">Broken Window Latch</td>
+<td class="px-8 py-6">
+<span class="px-3 py-1 bg-white border border-black text-[10px] font-bold uppercase tracking-widest">Africa Hall</span>
+</td>
+<td class="px-8 py-6 font-body-md text-secondary">Main Hall, Room 12</td>
+<td class="px-8 py-6 text-center">
+<span class="px-3 py-1 border border-black text-black text-[9px] font-bold uppercase tracking-widest">Pending</span>
+</td>
+<td class="px-8 py-6 text-center">
+<span class="px-3 py-1 border border-black text-black text-[9px] font-bold uppercase tracking-widest opacity-60">Medium</span>
+</td>
+</tr>
+<tr class="hover:bg-black/5 transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-black text-white flex items-center justify-center font-bold text-[12px]">KO</div>
+<span class="font-body-md font-bold uppercase text-[13px] tracking-tight">Kofi Owusu</span>
+</div>
+</td>
+<td class="px-8 py-6 font-body-md text-black/80">Elevator Sync Error</td>
+<td class="px-8 py-6">
+<span class="px-3 py-1 bg-white border border-black text-[10px] font-bold uppercase tracking-widest">Republic Hall</span>
+</td>
+<td class="px-8 py-6 font-body-md text-secondary">Service Elevator B</td>
+<td class="px-8 py-6 text-center">
+<span class="px-3 py-1 border border-black text-black text-[9px] font-bold uppercase tracking-widest">Scheduled</span>
+</td>
+<td class="px-8 py-6 text-center">
+<span class="px-3 py-1 border-2 border-black text-black text-[9px] font-bold uppercase tracking-widest">High</span>
+</td>
+</tr>
+<tr class="hover:bg-black/5 transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-black text-white flex items-center justify-center font-bold text-[12px]">AA</div>
+<span class="font-body-md font-bold uppercase text-[13px] tracking-tight">Ama Ansah</span>
+</div>
+</td>
+<td class="px-8 py-6 font-body-md text-black/80">Clogged Sink</td>
+<td class="px-8 py-6">
+<span class="px-3 py-1 bg-white border border-black text-[10px] font-bold uppercase tracking-widest">Queen II</span>
+</td>
+<td class="px-8 py-6 font-body-md text-secondary">Annexe, Flat 4</td>
+<td class="px-8 py-6 text-center">
+<span class="px-3 py-1 border border-black text-black text-[9px] font-bold uppercase tracking-widest opacity-30 line-through">Resolved</span>
+</td>
+<td class="px-8 py-6 text-center">
+<span class="px-3 py-1 border border-black text-black text-[9px] font-bold uppercase tracking-widest opacity-30">Low</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+</body></html>

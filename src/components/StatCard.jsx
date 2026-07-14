@@ -4,6 +4,7 @@ export default function StatCard({ label, value, type, icon }) {
   const getTypeClass = () => {
     switch(type) {
       case 'pending': return 'pending';
+      case 'scheduled': return 'scheduled';
       case 'in-progress': return 'in-progress';
       case 'resolved': return 'resolved';
       default: return '';

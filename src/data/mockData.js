@@ -220,10 +220,15 @@ const REVOKED_SEED_EMAILS = [
   'kwame.mensah@unity.snapfix.com',
 ];
 
-// ===== LOCALSTORAGE SYNCHRONIZATION =====
-const initLocalStorage = () => {
+// ===== LOCALSTORAGE SETUP (FRONTEND-ONLY, LOCAL STORAGE ONLY) =====
+export const checkMockServer = async () => {
+  // Always return false to prevent any backend fetch connections
+  return false;
+};
+
+const initLocalStorage = async () => {
   if (typeof window !== 'undefined') {
-    // Seed each store once. Generated accounts/data are never overwritten.
+    // Seed each store once if empty. Generated accounts/data are never overwritten.
     if (!localStorage.getItem('snapfix_halls')) {
       localStorage.setItem('snapfix_halls', JSON.stringify(initialHalls));
     }
@@ -236,15 +241,20 @@ const initLocalStorage = () => {
     if (!localStorage.getItem('snapfix_staff')) {
       localStorage.setItem('snapfix_staff', JSON.stringify(initialStaff));
     }
-    const storedReports = localStorage.getItem('snapfix_reports');
-    if (!storedReports) {
-      localStorage.setItem('snapfix_reports', JSON.stringify(initialReports));
+    // Use 'reports' as the primary key to sync with mobile app, fallback/migrate from 'snapfix_reports'
+    const storedReports = localStorage.getItem('reports') || localStorage.getItem('snapfix_reports');
+    if (!localStorage.getItem('reports')) {
+      if (storedReports) {
+        localStorage.setItem('reports', storedReports);
+      } else {
+        localStorage.setItem('reports', JSON.stringify(initialReports));
+      }
     } else {
       try {
         const parsed = JSON.parse(storedReports);
         const hasVideo = parsed.some(r => r.imageUri && (r.imageUri.endsWith('.mp4') || r.imageUri.startsWith('data:video/')));
         if (!hasVideo) {
-          localStorage.setItem('snapfix_reports', JSON.stringify(initialReports));
+          localStorage.setItem('reports', JSON.stringify(initialReports));
         }
       } catch (e) {}
     }
@@ -276,7 +286,7 @@ const initLocalStorage = () => {
       const validTechIds = new Set(
         cleanedAdmins.filter(a => a.role === 'technician').map(a => a.id)
       );
-      const reports = JSON.parse(localStorage.getItem('snapfix_reports') || '[]');
+      const reports = JSON.parse(localStorage.getItem('reports') || '[]');
       let reportsChanged = false;
       const cleanedReports = reports.map(r => {
         if (r.assignedTo && !validTechIds.has(r.assignedTo)) {
@@ -286,7 +296,7 @@ const initLocalStorage = () => {
         return r;
       });
       if (reportsChanged) {
-        localStorage.setItem('snapfix_reports', JSON.stringify(cleanedReports));
+        localStorage.setItem('reports', JSON.stringify(cleanedReports));
       }
     } catch (e) {
       // ignore — malformed stores are left as-is
@@ -294,16 +304,73 @@ const initLocalStorage = () => {
   }
 };
 
+// Start background syncing loop (disabled since we are offline-only)
+const startBackgroundSync = () => {
+  // No-op
+};
+
 // Execute immediately
-initLocalStorage();
+initLocalStorage().then(() => {
+  startBackgroundSync();
+});
 
 // ===== EXPORT PERSISTED GETTERS / SETTERS =====
 export const getPersistedReports = () => {
-  return JSON.parse(localStorage.getItem('snapfix_reports') || '[]');
+  const raw = localStorage.getItem('reports');
+  const reports = raw ? JSON.parse(raw) : [];
+  return reports.map(r => {
+    // Normalize fields from mobile schema to web schema
+    const studentName = r.studentName || r.submittedBy || 'Resident';
+    const category = r.category || r.serviceType || 'Electrical';
+    const issue = r.issue || r.selectedIssue || 'General Issue';
+    const description = r.description || r.writtenDetails || 'No description provided';
+    const hallName = r.hallName || r.hall || 'Unity Hall';
+    let status = r.status || 'pending';
+    if (status === 'in progress') status = 'in-progress';
+    
+    // Media fallback
+    let imageUri = r.imageUri || null;
+    if (!imageUri && r.photos && r.photos.length > 0) {
+      imageUri = r.photos[0];
+    } else if (!imageUri && r.video) {
+      imageUri = r.video;
+    }
+
+    return {
+      ...r,
+      studentName,
+      submittedBy: studentName,
+      category,
+      serviceType: category,
+      issue,
+      selectedIssue: issue,
+      description,
+      writtenDetails: description,
+      hallName,
+      hall: hallName,
+      status,
+      imageUri,
+    };
+  });
 };
 
 export const savePersistedReports = (reports) => {
-  localStorage.setItem('snapfix_reports', JSON.stringify(reports));
+  const normalized = reports.map(r => {
+    // Make sure status has the correct spacing for mobile when writing
+    let mobileStatus = r.status || 'pending';
+    if (mobileStatus === 'in-progress') mobileStatus = 'in progress';
+    
+    return {
+      ...r,
+      submittedBy: r.studentName || r.submittedBy,
+      serviceType: r.category || r.serviceType,
+      selectedIssue: r.issue || r.selectedIssue,
+      writtenDetails: r.description || r.writtenDetails,
+      hall: r.hallName || r.hall,
+      status: mobileStatus,
+    };
+  });
+  localStorage.setItem('reports', JSON.stringify(normalized));
 };
 
 export const getPersistedAdmins = () => {
@@ -350,39 +417,33 @@ export const mockLocations = halls;
 export const getReportsByHall = (hallId) => {
   const allReports = getPersistedReports();
   if (!hallId) return allReports;
-  return allReports.filter(report => report.hallId === hallId);
+  return allReports.filter(report => String(report.hallId) === String(hallId));
 };
 
 export const getNewsByHall = (hallId) => {
   const allNews = getPersistedNews();
   if (!hallId) return allNews;
-  return allNews.filter(news => news.hallId === hallId);
+  return allNews.filter(news => String(news.hallId) === String(hallId) || String(news.hallId) === 'all');
 };
 
 export const getReportsByTechnician = (technicianId) => {
   if (!technicianId) return [];
   const allReports = getPersistedReports();
-  const currentAdmins = getPersistedAdmins();
-  const tech = currentAdmins.find(admin => admin.id === technicianId);
-  if (!tech) return [];
-  
   return allReports.filter(report => 
-    report.hallId === tech.hallId &&
-    report.category?.toLowerCase() === tech.specialty?.toLowerCase() &&
-    report.assignedTo === technicianId
+    report.assignedTo !== null && String(report.assignedTo) === String(technicianId)
   );
 };
 
 export const getReportsPendingAssignment = (hallId) => {
   const allReports = getPersistedReports();
-  const reports = hallId ? allReports.filter(r => r.hallId === hallId) : allReports;
+  const reports = hallId ? allReports.filter(r => String(r.hallId) === String(hallId)) : allReports;
   return reports.filter(r => r.assignedTo === null && r.status === 'pending');
 };
 
 export const getStudentsByHall = (hallId) => {
   const students = JSON.parse(localStorage.getItem('snapfix_students') || '[]');
   if (!hallId) return students;
-  return students.filter(student => student.hallId === hallId);
+  return students.filter(student => String(student.hallId) === String(hallId));
 };
 
 export const getAdminByEmail = (email) => {
@@ -424,6 +485,7 @@ export const saveReport = (updatedReport) => {
 export const getStatusLabel = (status) => {
   switch(status) {
     case 'pending': return 'Pending';
+    case 'scheduled': return 'Scheduled';
     case 'in-progress': return 'In Progress';
     case 'resolved': return 'Resolved';
     default: return 'Unknown';
@@ -442,6 +504,7 @@ export const getPriorityLabel = (priority) => {
 export const getStatusColor = (status) => {
   switch(status) {
     case 'pending': return '#F59E0B';
+    case 'scheduled': return '#EA580C';
     case 'in-progress': return '#3B82F6';
     case 'resolved': return '#10B981';
     default: return '#6B7280';

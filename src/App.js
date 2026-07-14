@@ -9,13 +9,14 @@ import Layout from './components/Layout';
 // Pages
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Reports from './pages/Reports';
 import Students from './pages/Students';
 import Staff from './pages/Staff';
 import Locations from './pages/Locations';
 import Settings from './pages/Settings';
 import TechnicianDashboard from './pages/TechnicianDashboard';
 import News from './pages/News';
+import ScheduleAppointment from './pages/ScheduleAppointment';
+import UpdateReport from './pages/UpdateReport';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -79,12 +80,25 @@ function App() {
           } 
         />
         
+        {/* SCHEDULE APPOINTMENT ROUTE - Technician Role */}
         <Route 
-          path="/reports" 
+          path="/schedule-appointment" 
           element={
-            <ProtectedRoute allowedRoles={['super_admin', 'hall_admin']}>
+            <ProtectedRoute allowedRoles={['technician']}>
               <Layout user={user} handleLogout={handleLogout}>
-                <Reports user={user} />
+                <ScheduleAppointment user={user} />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* UPDATE REPORT ROUTE - Technician Role */}
+        <Route 
+          path="/update-report" 
+          element={
+            <ProtectedRoute allowedRoles={['technician']}>
+              <Layout user={user} handleLogout={handleLogout}>
+                <UpdateReport user={user} />
               </Layout>
             </ProtectedRoute>
           } 
