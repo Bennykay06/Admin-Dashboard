@@ -66,9 +66,9 @@ export default function Staff({ user }) {
       name: '',
       email: '',
       role: 'technician',
-      hallId: user?.hallId || '1',
-      specialty: 'electrical',
-      status: 'active',
+      hallId: user?.hallId || '',
+      specialty: '',
+      status: '',
       password: ''
     });
     setShowModal(true);
@@ -117,6 +117,18 @@ export default function Staff({ user }) {
   const handleSaveStaff = () => {
     if (!formData.name) {
       alert('Please fill in Name');
+      return;
+    }
+    if (!formData.hallId) {
+      alert('Please select a Residence Hall');
+      return;
+    }
+    if (!formData.specialty) {
+      alert('Please select a Specialty / Role');
+      return;
+    }
+    if (!formData.status) {
+      alert('Please select a Status');
       return;
     }
 
@@ -555,6 +567,7 @@ export default function Staff({ user }) {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., John Doe"
                   className="w-full premium-input"
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -568,6 +581,7 @@ export default function Staff({ user }) {
                     disabled={!!user?.hallId}
                     className="w-full premium-select appearance-none cursor-pointer"
                   >
+                    <option value="" disabled>Select Residence Hall</option>
                     {halls.map((hall) => (
                       <option key={hall.id} value={hall.id}>
                         {hall.name}
@@ -586,6 +600,7 @@ export default function Staff({ user }) {
                     onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
                     className="w-full premium-select appearance-none cursor-pointer"
                   >
+                    <option value="" disabled>Select Role / Specialty</option>
                     {isSuperAdmin && <option value="hall-admin">Hall Admin</option>}
                     <option value="electrical">Electrical</option>
                     <option value="plumbing">Plumbing</option>
@@ -604,6 +619,7 @@ export default function Staff({ user }) {
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     className="w-full premium-select appearance-none cursor-pointer"
                   >
+                    <option value="" disabled>Select Status</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
@@ -620,6 +636,7 @@ export default function Staff({ user }) {
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder="Enter initial password"
                     className="w-full premium-input"
+                    autoComplete="new-password"
                     required
                   />
                 </div>

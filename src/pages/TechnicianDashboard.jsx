@@ -25,6 +25,7 @@ export default function TechnicianDashboard({ user }) {
   const [proposedTime, setProposedTime] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessageText, setNewMessageText] = useState('');
+  const [techNotes, setTechNotes] = useState('');
 
   useEffect(() => {
     const loadTechData = () => {
@@ -75,6 +76,7 @@ export default function TechnicianDashboard({ user }) {
     setSelectedReport(report);
     setProposedDate(report.appointmentDate || '');
     setProposedTime(report.appointmentTime || '');
+    setTechNotes(report.technicianNotes || '');
 
     // Load Chat history from localStorage
     const chatKey = `chat:${report.id}`;
@@ -103,11 +105,17 @@ export default function TechnicianDashboard({ user }) {
         ? { 
             ...report, 
             status: 'resolved',
+            technicianNotes: techNotes,
             repairDate: new Date().toISOString()
           }
         : report
     );
     savePersistedReports(updatedAllReports);
+
+    // Dispatch event to sync state across views/tabs
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('mock-data-updated'));
+    }
 
     setShowUpdateModal(false);
     setSelectedReport(null);
@@ -115,6 +123,7 @@ export default function TechnicianDashboard({ user }) {
     setProposedTime('');
     setChatMessages([]);
     setNewMessageText('');
+    setTechNotes('');
     refreshReports();
     alert('Job marked as Resolved!');
   };
@@ -630,13 +639,25 @@ export default function TechnicianDashboard({ user }) {
                       </div>
 
                       {selectedReport.status !== 'resolved' && (
-                        <button
-                          onClick={handleResolveJob}
-                          className="w-full py-3.5 bg-status-success/15 hover:bg-status-success/25 text-status-success-text border border-status-success/30 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">done_all</span>
-                          Mark Job as Resolved
-                        </button>
+                        <div className="space-y-4">
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-black/60 block">Leave a Note (Technician Remarks)</label>
+                            <textarea
+                              value={techNotes}
+                              onChange={(e) => setTechNotes(e.target.value)}
+                              placeholder="Describe what repair actions were taken, materials used, etc..."
+                              rows="3"
+                              className="w-full premium-input resize-none text-xs"
+                            />
+                          </div>
+                          <button
+                            onClick={handleResolveJob}
+                            className="w-full py-3.5 bg-status-success/15 hover:bg-status-success/25 text-status-success-text border border-status-success/30 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">done_all</span>
+                            Mark Job as Resolved
+                          </button>
+                        </div>
                       )}
                     </div>
                   ) : (

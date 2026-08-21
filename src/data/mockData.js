@@ -79,6 +79,11 @@ const initialReports = [
     timestamp: '2024-06-20T10:30:00Z',
     description: 'The fluorescent tube in my room has been flickering for 2 days and now completely dead.',
     imageUri: 'https://images.unsplash.com/photo-1550985616-10810253b84d?w=400&q=80',
+    photos: [
+      'https://images.unsplash.com/photo-1550985616-10810253b84d?w=400&q=80',
+      'https://images.unsplash.com/photo-1621905252507-b354bc25edac?w=400&q=80'
+    ],
+    video: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
     assignedTo: null,
     assignedName: null,
     assignedSpecialty: null,
@@ -99,6 +104,10 @@ const initialReports = [
     timestamp: '2024-06-19T14:20:00Z',
     description: 'The bathroom tap is leaking constantly and wasting water.',
     imageUri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    photos: [
+      'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&q=80'
+    ],
+    video: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
     assignedTo: null,
     assignedName: null,
     assignedSpecialty: null,
@@ -252,8 +261,8 @@ const initLocalStorage = async () => {
     } else {
       try {
         const parsed = JSON.parse(storedReports);
-        const hasVideo = parsed.some(r => r.imageUri && (r.imageUri.endsWith('.mp4') || r.imageUri.startsWith('data:video/')));
-        if (!hasVideo) {
+        const hasPhotos = parsed.some(r => r.photos && Array.isArray(r.photos));
+        if (!hasPhotos) {
           localStorage.setItem('reports', JSON.stringify(initialReports));
         }
       } catch (e) {}

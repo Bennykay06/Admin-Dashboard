@@ -7,6 +7,8 @@ import {
   getPersistedReports, 
   savePersistedReports 
 } from '../data/mockData';
+import RealTimeAnalytics from '../components/RealTimeAnalytics';
+
 
 export default function Dashboard({ user }) {
   const isSuperAdmin = user?.role === 'super_admin';
@@ -24,11 +26,42 @@ export default function Dashboard({ user }) {
   const [halls, setHalls] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [showImageModal, setShowImageModal] = useState(false);
-  const [selectedImage, setSelectedImage] = useState('');
+  const [selectedReportMedia, setSelectedReportMedia] = useState([]);
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const [activeFilter, setActiveFilter] = useState(null);
 
   const isVideo = (uri) => {
     if (!uri) return false;
     return uri.startsWith('data:video/') || uri.toLowerCase().endsWith('.mp4') || uri.toLowerCase().endsWith('.mov') || uri.toLowerCase().endsWith('.webm');
+  };
+
+  const getReportMedia = (report) => {
+    const media = [];
+    if (report.imageUri) {
+      media.push({
+        uri: report.imageUri,
+        type: isVideo(report.imageUri) ? 'video' : 'image'
+      });
+    }
+    if (report.photos && Array.isArray(report.photos)) {
+      report.photos.forEach(photo => {
+        if (photo && !media.some(m => m.uri === photo)) {
+          media.push({
+            uri: photo,
+            type: isVideo(photo) ? 'video' : 'image'
+          });
+        }
+      });
+    }
+    if (report.video) {
+      if (!media.some(m => m.uri === report.video)) {
+        media.push({
+          uri: report.video,
+          type: 'video'
+        });
+      }
+    }
+    return media;
   };
 
   const loadData = () => {
@@ -43,8 +76,8 @@ export default function Dashboard({ user }) {
     setReports(sortedReports);
 
     const total = hallReports.length;
-    const pending = hallReports.filter(r => r.status === 'pending').length;
-    const scheduled = hallReports.filter(r => r.status === 'scheduled').length;
+    const pending = hallReports.filter(r => r.assignedTo === null && r.status === 'pending').length;
+    const scheduled = hallReports.filter(r => r.assignedTo !== null && (r.status === 'pending' || r.status === 'scheduled')).length;
     const inProgress = hallReports.filter(r => r.status === 'in-progress').length;
     const resolved = hallReports.filter(r => r.status === 'resolved').length;
     
@@ -64,6 +97,12 @@ export default function Dashboard({ user }) {
   const handleAssignTechnician = (reportId, techId) => {
     const allReports = getPersistedReports();
     const tech = technicians.find(t => String(t.id) === String(techId));
+    const targetReport = allReports.find(r => r.id === reportId);
+
+    if (tech && targetReport && tech.specialty?.toLowerCase() !== targetReport.category?.toLowerCase()) {
+      alert(`Error: Cannot assign this work. The report category (${targetReport.category}) does not match the technician's specialty (${tech.specialty}).`);
+      return;
+    }
     
     const updated = allReports.map(report => {
       if (report.id === reportId) {
@@ -74,7 +113,7 @@ export default function Dashboard({ user }) {
           assignedTo: finalTechId,
           assignedName: tech ? tech.name : null,
           assignedSpecialty: tech ? tech.specialty : null,
-          status: techId ? 'scheduled' : 'pending' // Transition status on assignment
+          status: 'pending' // Status remains pending on assignment; the technician will schedule it.
         };
       }
       return report;
@@ -110,7 +149,19 @@ export default function Dashboard({ user }) {
     return parts[0].slice(0, 2);
   };
 
-  const recentReports = reports.slice(0, 15); // Show top 15 reports directly in the dashboard
+  const filteredReports = activeFilter
+    ? reports.filter(r => {
+        if (activeFilter === 'pending') {
+          return r.assignedTo === null && r.status === 'pending';
+        }
+        if (activeFilter === 'scheduled') {
+          return r.assignedTo !== null && (r.status === 'pending' || r.status === 'scheduled');
+        }
+        return r.status === activeFilter;
+      })
+    : reports;
+
+  const recentReports = filteredReports.slice(0, 15); // Show top 15 reports directly in the dashboard
 
   return (
     <div className="font-headline-md min-h-screen p-4 md:p-8 animate-fade-in-up space-y-8">
@@ -147,75 +198,33 @@ export default function Dashboard({ user }) {
         )}
       </header>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
-        {/* Total */}
-        <div className="premium-card p-6 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-6">
-            <span className="material-symbols-outlined text-deep-charcoal">assignment</span>
-            <span className="text-secondary text-[10px] font-bold uppercase tracking-[0.2em]">Total</span>
-          </div>
-          <div>
-            <p className="text-secondary font-label-md uppercase tracking-widest text-[10px] mb-1">Reports Raised</p>
-            <span className="text-4xl font-bold text-deep-charcoal tracking-tight">{stats.total}</span>
-          </div>
-        </div>
-
-        {/* Pending */}
-        <div className="premium-card p-6 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-6">
-            <span className="material-symbols-outlined text-status-critical-text" style={{ color: 'var(--status-critical-text)' }}>info</span>
-            <span className="text-secondary text-[10px] font-bold uppercase tracking-[0.2em]">Pending</span>
-          </div>
-          <div>
-            <p className="text-secondary font-label-md uppercase tracking-widest text-[10px] mb-1">Unassigned</p>
-            <span className="text-4xl font-bold text-deep-charcoal tracking-tight">{stats.pending}</span>
-          </div>
-        </div>
-
-        {/* Scheduled */}
-        <div className="premium-card p-6 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-6">
-            <span className="material-symbols-outlined text-status-pending-text" style={{ color: 'var(--status-pending-text)' }}>calendar_today</span>
-            <span className="text-secondary text-[10px] font-bold uppercase tracking-[0.2em]">Scheduled</span>
-          </div>
-          <div>
-            <p className="text-secondary font-label-md uppercase tracking-widest text-[10px] mb-1">Assigned</p>
-            <span className="text-4xl font-bold text-deep-charcoal tracking-tight">{stats.scheduled}</span>
-          </div>
-        </div>
-
-        {/* In Progress */}
-        <div className="premium-card p-6 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-6">
-            <span className="material-symbols-outlined text-status-pending-text" style={{ color: 'var(--status-pending-text)' }}>engineering</span>
-            <span className="text-secondary text-[10px] font-bold uppercase tracking-[0.2em]">Fixing</span>
-          </div>
-          <div>
-            <p className="text-secondary font-label-md uppercase tracking-widest text-[10px] mb-1">In Progress</p>
-            <span className="text-4xl font-bold text-deep-charcoal tracking-tight">{stats.inProgress}</span>
-          </div>
-        </div>
-
-        {/* Resolved */}
-        <div className="premium-card p-6 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-6">
-            <span className="material-symbols-outlined text-status-success-text" style={{ color: 'var(--status-success-text)' }}>check_circle</span>
-            <span className="text-secondary text-[10px] font-bold uppercase tracking-[0.2em]">Done</span>
-          </div>
-          <div>
-            <p className="text-secondary font-label-md uppercase tracking-widest text-[10px] mb-1">Resolved</p>
-            <span className="text-4xl font-bold text-deep-charcoal tracking-tight">{stats.resolved}</span>
-          </div>
-        </div>
-      </div>
+      {/* Real-time distribution graph replacing the old static cards */}
+      <RealTimeAnalytics 
+        stats={stats} 
+        activeFilter={activeFilter} 
+        onFilterChange={setActiveFilter} 
+      />
 
       {/* Master Reports Table Container */}
       <div className="premium-card overflow-hidden">
-        <div className="px-8 py-6 border-b border-border-light bg-surface-low/50 flex justify-between items-center">
+        <div className="px-8 py-6 border-b border-border-light bg-surface-low/50 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <h4 className="font-title-md text-title-md font-bold uppercase tracking-widest text-deep-charcoal">
             {isSuperAdmin ? 'Global Maintenance Log' : 'Recent Hall Reports'}
+            {activeFilter && (
+              <span className="ml-2 text-xs font-semibold normal-case text-secondary bg-surface-mid px-2.5 py-1 rounded-md border border-border-light">
+                Filtered by {activeFilter.replace('-', ' ')}
+              </span>
+            )}
           </h4>
+          {activeFilter && (
+            <button 
+              onClick={() => setActiveFilter(null)}
+              className="outline-btn text-[10px] py-1 px-2.5 flex items-center gap-1 self-start sm:self-auto"
+            >
+              <span className="material-symbols-outlined text-[14px]">filter_alt_off</span>
+              Clear Filter
+            </button>
+          )}
         </div>
         
         <div className="overflow-x-auto thin-scrollbar">
@@ -235,9 +244,10 @@ export default function Dashboard({ user }) {
             <tbody>
               {recentReports.length > 0 ? (
                 recentReports.map((report) => {
-                  // Filter technicians by the hall assigned to the report
+                  // Filter technicians by the hall AND line of work (specialty/category)
                   const availableTechs = technicians.filter(
-                    t => String(t.hallId) === String(report.hallId)
+                    t => String(t.hallId) === String(report.hallId) &&
+                         t.specialty?.toLowerCase() === report.category?.toLowerCase()
                   );
 
                   return (
@@ -294,6 +304,9 @@ export default function Dashboard({ user }) {
                             }`}
                           >
                             <option value="">Unassigned</option>
+                            {availableTechs.length === 0 && (
+                              <option disabled value="">No matching {report.category} tech</option>
+                            )}
                             {availableTechs.map(t => (
                               <option key={t.id} value={t.id}>
                                 {t.name} ({t.specialty})
@@ -319,16 +332,19 @@ export default function Dashboard({ user }) {
                         {report.imageUri || (report.photos && report.photos.length > 0) || report.video ? (
                           <button
                             onClick={() => {
-                              const mediaUri = report.imageUri || (report.photos && report.photos[0]) || report.video;
-                              setSelectedImage(mediaUri);
+                              const media = getReportMedia(report);
+                              setSelectedReportMedia(media);
+                              setActiveMediaIndex(0);
                               setShowImageModal(true);
                             }}
                             className="outline-btn text-[11px] py-1.5 px-3 flex items-center gap-1 hover:bg-surface-high transition-all"
                           >
                             <span className="material-symbols-outlined text-[14px]">
-                              {isVideo(report.imageUri || (report.photos && report.photos[0]) || report.video) ? 'movie' : 'image'}
+                              {getReportMedia(report).some(m => m.type === 'video') 
+                                ? (getReportMedia(report).some(m => m.type === 'image') ? 'perm_media' : 'movie')
+                                : 'image'}
                             </span>
-                            View Media
+                            View Media ({getReportMedia(report).length})
                           </button>
                         ) : (
                           <span className="text-[11px] text-secondary italic">No media</span>
@@ -370,40 +386,107 @@ export default function Dashboard({ user }) {
       </div>
 
       {/* ===== EVIDENCE MEDIA PREVIEW MODAL ===== */}
-      {showImageModal && selectedImage && (
-        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="modal-content bg-white border border-border-medium rounded-xl p-6 max-w-2xl w-full shadow-2xl flex flex-col">
+      {showImageModal && selectedReportMedia && selectedReportMedia.length > 0 && (
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in bg-black/60 backdrop-blur-sm">
+          <div className="modal-content bg-white border border-border-medium rounded-xl p-6 max-w-3xl w-full shadow-2xl flex flex-col">
+            
+            {/* Modal Header */}
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-base font-bold text-deep-charcoal uppercase tracking-wider flex items-center gap-1.5">
-                <span className="material-symbols-outlined">image</span>
-                Evidence Media
-              </h3>
+              <div>
+                <h3 className="text-base font-bold text-deep-charcoal uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="material-symbols-outlined">perm_media</span>
+                  Evidence Files
+                </h3>
+                <span className="text-[10px] text-secondary font-bold uppercase tracking-widest mt-0.5">
+                  Item {activeMediaIndex + 1} of {selectedReportMedia.length} — {
+                    selectedReportMedia.filter(m => m.type === 'image').length
+                  } Photo(s), {
+                    selectedReportMedia.filter(m => m.type === 'video').length
+                  } Video(s)
+                </span>
+              </div>
               <button
                 className="outline-btn py-1 px-3 text-xs"
                 onClick={() => {
                   setShowImageModal(false);
-                  setSelectedImage('');
+                  setSelectedReportMedia([]);
+                  setActiveMediaIndex(0);
                 }}
               >
                 ✕ Close
               </button>
             </div>
-            <div className="flex-1 bg-black rounded-lg overflow-hidden flex items-center justify-center min-h-[300px]">
-              {isVideo(selectedImage) ? (
+
+            {/* Main Viewer Area */}
+            <div className="relative flex-1 bg-black rounded-lg overflow-hidden flex items-center justify-center min-h-[360px] max-h-[60vh]">
+              {/* Prev Button */}
+              {selectedReportMedia.length > 1 && (
+                <button
+                  onClick={() => setActiveMediaIndex((activeMediaIndex - 1 + selectedReportMedia.length) % selectedReportMedia.length)}
+                  className="absolute left-4 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer select-none"
+                >
+                  <span className="material-symbols-outlined text-[24px]">chevron_left</span>
+                </button>
+              )}
+
+              {/* Main Content Display */}
+              {selectedReportMedia[activeMediaIndex].type === 'video' ? (
                 <video 
-                  src={selectedImage} 
+                  key={selectedReportMedia[activeMediaIndex].uri}
+                  src={selectedReportMedia[activeMediaIndex].uri} 
                   controls
                   autoPlay
-                  className="max-h-[60vh] w-full object-contain"
+                  className="max-h-[60vh] max-w-full object-contain"
                 />
               ) : (
                 <img 
-                  src={selectedImage} 
-                  alt="Evidence" 
-                  className="max-h-[60vh] w-full object-contain"
+                  src={selectedReportMedia[activeMediaIndex].uri} 
+                  alt={`Evidence ${activeMediaIndex + 1}`} 
+                  className="max-h-[60vh] max-w-full object-contain"
                 />
               )}
+
+              {/* Next Button */}
+              {selectedReportMedia.length > 1 && (
+                <button
+                  onClick={() => setActiveMediaIndex((activeMediaIndex + 1) % selectedReportMedia.length)}
+                  className="absolute right-4 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer select-none"
+                >
+                  <span className="material-symbols-outlined text-[24px]">chevron_right</span>
+                </button>
+              )}
             </div>
+
+            {/* Thumbnail Row (only if more than 1 item) */}
+            {selectedReportMedia.length > 1 && (
+              <div className="flex gap-3 mt-4 overflow-x-auto py-2 thin-scrollbar justify-center">
+                {selectedReportMedia.map((media, idx) => {
+                  const isActive = idx === activeMediaIndex;
+                  return (
+                    <div
+                      key={media.uri}
+                      onClick={() => setActiveMediaIndex(idx)}
+                      className={`relative w-16 h-16 rounded-lg overflow-hidden cursor-pointer border-2 transition-all flex-shrink-0 ${
+                        isActive ? 'border-deep-charcoal scale-105' : 'border-transparent opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      {media.type === 'video' ? (
+                        <div className="w-full h-full bg-slate-900 flex items-center justify-center text-white">
+                          <span className="material-symbols-outlined text-[20px]">play_circle</span>
+                        </div>
+                      ) : (
+                        <img 
+                          src={media.uri} 
+                          alt="" 
+                          className="w-full h-full object-cover" 
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
           </div>
         </div>
       )}

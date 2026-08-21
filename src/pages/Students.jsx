@@ -1,23 +1,36 @@
-// src/pages/Students.jsx - MINIMALIST STUDENT DIRECTORY
+// src/pages/Students.jsx - MINIMALIST STUDENT DIRECTORY WITH TECH REMARKS
 import React, { useState, useEffect } from 'react';
-import { getStudentsByHall, getPersistedHalls } from '../data/mockData';
+import { getStudentsByHall, getPersistedHalls, getPersistedReports, getCategoryIcon } from '../data/mockData';
 
 export default function Students({ user }) {
   const isSuperAdmin = user?.role === 'super_admin';
   const [students, setStudents] = useState([]);
   const [halls, setHalls] = useState([]);
+  const [reports, setReports] = useState([]);
   const [selectedHall, setSelectedHall] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStudentForRemarks, setSelectedStudentForRemarks] = useState(null);
+  const [showRemarksModal, setShowRemarksModal] = useState(false);
 
-  // Load halls and initial students
+  const loadData = () => {
+    setReports(getPersistedReports());
+    const hallId = isSuperAdmin ? selectedHall : user?.hallId;
+    setStudents(getStudentsByHall(hallId));
+  };
+
+  // Load halls and initial students/reports
   useEffect(() => {
     setHalls(getPersistedHalls());
   }, []);
 
   useEffect(() => {
-    const hallId = isSuperAdmin ? selectedHall : user?.hallId;
-    const hallStudents = getStudentsByHall(hallId);
-    setStudents(hallStudents);
+    loadData();
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('mock-data-updated', loadData);
+      return () => window.removeEventListener('mock-data-updated', loadData);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, selectedHall, isSuperAdmin]);
 
   const toggleStatus = (id) => {
@@ -37,6 +50,11 @@ export default function Students({ user }) {
     // Refresh display
     const hallId = isSuperAdmin ? selectedHall : user?.hallId;
     setStudents(updatedStudents.filter(s => !hallId || String(s.hallId) === String(hallId)));
+  };
+
+  const handleOpenRemarks = (student) => {
+    setSelectedStudentForRemarks(student);
+    setShowRemarksModal(true);
   };
 
   // Filter students based on search and resolved status
@@ -65,12 +83,22 @@ export default function Students({ user }) {
 
   const exportCSV = () => {
     let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += 'Name,Hall,Room,Email,Reports,Fault Status\n';
+    csvContent += 'Name,Hall,Room,Email,Reports,Technician Remarks,Fault Status\n';
     
     filteredStudents.forEach(s => {
       const room = s.room || `Block ${String.fromCharCode(65 + (Number(s.id) % 3))}-${100 + Number(s.id)}`;
       const status = (s.status || 'active') === 'active' ? 'Resolved' : 'Pending';
-      csvContent += `"${s.name}","${s.hallName}","${room}","${s.email}",${s.reports || 0},"${status}"\n`;
+
+      const studentReports = reports.filter(r => 
+        (r.studentEmail && r.studentEmail.toLowerCase() === s.email.toLowerCase()) || 
+        (r.studentName && r.studentName.toLowerCase() === s.name.toLowerCase())
+      );
+      const notes = studentReports
+        .filter(r => r.status === 'resolved' && r.technicianNotes)
+        .map(r => `${r.category} - ${r.issue}: ${r.technicianNotes}`)
+        .join(' | ');
+
+      csvContent += `"${s.name}","${s.hallName}","${room}","${s.email}",${s.reports || 0},"${notes.replace(/"/g, '""')}","${status}"\n`;
     });
     
     const encodedUri = encodeURI(csvContent);
@@ -164,69 +192,187 @@ export default function Students({ user }) {
 
       {/* Directory Table */}
       <div className="bg-white border border-surface-container-highest rounded-2xl overflow-hidden shadow-sm">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-surface-container-low border-b border-surface-container-highest">
-              <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold">Student Name</th>
-              <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold">Residential Location</th>
-              <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold">Email Address</th>
-              <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold text-center">Reports</th>
-              <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold">Fault Status</th>
-            </tr>
-          </thead>
-          <tbody className="text-sm divide-y divide-surface-container">
-            {filteredStudents.length === 0 ? (
-              <tr>
-                <td colSpan="5" className="px-6 py-10 text-center text-secondary font-medium">
-                  No student records match search criteria.
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[900px]">
+            <thead>
+              <tr className="bg-surface-container-low border-b border-surface-container-highest">
+                <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold">Student Name</th>
+                <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold">Residential Location</th>
+                <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold">Email Address</th>
+                <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold text-center">Reports</th>
+                <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold">Technician Remarks</th>
+                <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold">Fault Status</th>
               </tr>
-            ) : (
-              filteredStudents.map((student) => {
-                const room = student.room || `Block ${String.fromCharCode(65 + (Number(student.id) % 3))}-${100 + Number(student.id)}`;
-                const isActive = (student.status || 'active') === 'active';
-                
-                return (
-                  <tr key={student.id} className="hover:bg-surface-container-low transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-deep-charcoal text-white flex items-center justify-center font-bold text-xs">
-                          {getInitials(student.name)}
+            </thead>
+            <tbody className="text-sm divide-y divide-surface-container">
+              {filteredStudents.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-10 text-center text-secondary font-medium">
+                    No student records match search criteria.
+                  </td>
+                </tr>
+              ) : (
+                filteredStudents.map((student) => {
+                  const room = student.room || `Block ${String.fromCharCode(65 + (Number(student.id) % 3))}-${100 + Number(student.id)}`;
+                  const isActive = (student.status || 'active') === 'active';
+                  
+                  // Retrieve reports matching this student's details
+                  const studentReports = reports.filter(r => 
+                    (r.studentEmail && r.studentEmail.toLowerCase() === student.email.toLowerCase()) || 
+                    (r.studentName && r.studentName.toLowerCase() === student.name.toLowerCase())
+                  );
+                  const resolvedReportsWithNotes = studentReports.filter(r => r.status === 'resolved' && r.technicianNotes);
+
+                  return (
+                    <tr key={student.id} className="hover:bg-surface-container-low transition-colors align-top">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-deep-charcoal text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
+                            {getInitials(student.name)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-deep-charcoal">{student.name}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-deep-charcoal">{student.name}</p>
+                      </td>
+                      <td className="px-6 py-4 text-deep-charcoal">
+                        <span className="font-semibold">{student.hallName}</span>, {room}
+                      </td>
+                      <td className="px-6 py-4 text-secondary">{student.email}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="bg-surface-container text-deep-charcoal px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-surface-container-highest">
+                          {student.reports}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {resolvedReportsWithNotes.length === 0 ? (
+                          <span className="text-secondary italic text-xs">No remarks</span>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenRemarks(student)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-black hover:bg-neutral-900 text-white rounded-lg text-xs font-bold transition-all shadow-sm"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">visibility</span>
+                            View Remarks ({resolvedReportsWithNotes.length})
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => toggleStatus(student.id)}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                            isActive 
+                              ? 'bg-status-success/10 text-status-success' 
+                              : 'bg-status-critical/10 text-status-critical'
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-status-success' : 'bg-status-critical'}`}></span>
+                          {isActive ? 'Resolved' : 'Pending'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ===== REMARKS MODAL ===== */}
+      {showRemarksModal && selectedStudentForRemarks && (() => {
+        const studentReports = reports.filter(r => 
+          (r.studentEmail && r.studentEmail.toLowerCase() === selectedStudentForRemarks.email.toLowerCase()) || 
+          (r.studentName && r.studentName.toLowerCase() === selectedStudentForRemarks.name.toLowerCase())
+        );
+        const resolvedReportsWithNotes = studentReports.filter(r => r.status === 'resolved' && r.technicianNotes);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white border border-surface-container-highest rounded-2xl p-6 md:p-8 max-w-xl w-full shadow-2xl flex flex-col max-h-[85vh] animate-scale-up">
+              {/* Modal Header */}
+              <div className="flex justify-between items-center mb-6 border-b border-surface-container pb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-deep-charcoal flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[24px]">description</span>
+                    Technician Remarks
+                  </h3>
+                  <p className="text-xs text-secondary mt-1">
+                    Resolved tickets history for <strong className="text-deep-charcoal">{selectedStudentForRemarks.name}</strong>
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowRemarksModal(false);
+                    setSelectedStudentForRemarks(null);
+                  }}
+                  className="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-highest flex items-center justify-center text-secondary hover:text-deep-charcoal transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Remarks List */}
+              <div className="flex-1 overflow-y-auto thin-scrollbar space-y-4 pr-1">
+                {resolvedReportsWithNotes.length === 0 ? (
+                  <p className="text-center py-10 text-secondary text-sm italic">
+                    No resolved remarks found for this student.
+                  </p>
+                ) : (
+                  resolvedReportsWithNotes.map((report) => (
+                    <div 
+                      key={report.id} 
+                      className="bg-surface-container-low border border-surface-container-highest rounded-2xl p-4 space-y-3 shadow-sm hover:shadow transition-shadow"
+                    >
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{getCategoryIcon(report.category)}</span>
+                          <div>
+                            <h4 className="font-bold text-sm text-deep-charcoal leading-snug">{report.issue}</h4>
+                            <p className="text-[10px] text-secondary font-medium">{report.location}</p>
+                          </div>
+                        </div>
+                        <span className="font-mono text-[10px] bg-surface-container px-2 py-0.5 rounded-md font-bold text-deep-charcoal border border-surface-container-highest flex-shrink-0">
+                          #{report.id}
+                        </span>
+                      </div>
+
+                      <div className="bg-white border border-surface-container rounded-xl p-3 text-xs text-deep-charcoal italic leading-relaxed relative">
+                        <span className="absolute top-1 left-2 text-neutral-200 text-3xl font-serif select-none pointer-events-none">“</span>
+                        <p className="pl-4 pr-2 font-medium">"{report.technicianNotes}"</p>
+                      </div>
+
+                      <div className="flex justify-between items-center text-[10px] text-secondary font-bold pt-2 border-t border-surface-container">
+                        <div className="flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[14px]">badge</span>
+                          <span>By: {report.assignedName || 'Technician'} ({report.assignedSpecialty || report.category} Specialist)</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                          <span>{report.repairDate ? new Date(report.repairDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-deep-charcoal">
-                      <span className="font-semibold">{student.hallName}</span>, {room}
-                    </td>
-                    <td className="px-6 py-4 text-secondary">{student.email}</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="bg-surface-container text-deep-charcoal px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-surface-container-highest">
-                        {student.reports}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <button
-                        onClick={() => toggleStatus(student.id)}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                          isActive 
-                            ? 'bg-status-success/10 text-status-success' 
-                            : 'bg-status-critical/10 text-status-critical'
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-status-success' : 'bg-status-critical'}`}></span>
-                        {isActive ? 'Resolved' : 'Pending'}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="mt-6 pt-4 border-t border-surface-container flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowRemarksModal(false);
+                    setSelectedStudentForRemarks(null);
+                  }}
+                  className="px-5 py-2.5 bg-black hover:bg-neutral-900 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                >
+                  Close Remarks
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
