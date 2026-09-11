@@ -1,11 +1,19 @@
-// src/pages/Staff.jsx - COMPLETE WITH CREDENTIALS GENERATION AND TECH SPECIALTIES
-import React, { useState } from 'react';
-import { 
-  getPersistedStaff, 
-  savePersistedStaff, 
-  getPersistedAdmins, 
-  savePersistedAdmins,
-  getPersistedHalls
+// src/pages/Staff.jsx - HALL ADMIN ACCOUNT MANAGEMENT
+//
+// The technician role was removed from this app (see
+// remove_technician_role.sql), which also removed hall admins' ability to
+// manage their own staff — the only account this page can still create is
+// a hall_admin, and only a super admin may do that. App.js now restricts
+// this route to super_admin.
+import React, { useState, useEffect } from 'react';
+import {
+  getPersistedStaff,
+  getPersistedHalls,
+  useStoreVersion,
+  createStaffAccount,
+  updateStaffProfile,
+  setStaffPassword,
+  deleteStaffAccount
 } from '../data/mockData';
 
 // Copy helper that works outside secure contexts (e.g. http:// on a LAN IP),
@@ -37,13 +45,25 @@ function fallbackCopy(text) {
   }
 }
 
-export default function Staff({ user }) {
-  // Super admins manage every hall and can create hall admins. Hall admins are
-  // scoped to their own hall and may only create/manage technicians there.
-  const isSuperAdmin = user?.role === 'super_admin';
+const roleLabel = (role) => (role === 'super_admin' ? 'Super Admin' : 'Hall Admin');
 
-  const [staff, setStaff] = useState(() => getPersistedStaff());
-  const [halls] = useState(() => getPersistedHalls());
+export default function Staff({ user }) {
+  // The store keeps an `isActive` boolean (mirroring the profiles.is_active
+  // column); this page was written against a `status: 'active'|'inactive'`
+  // string that the store never provided, so every active/inactive check
+  // below silently compared against undefined. Deriving it here once keeps
+  // the rest of the page unchanged while fixing that mismatch.
+  const withStatus = (list) => list.map((m) => ({ ...m, status: m.isActive ? 'active' : 'inactive' }));
+
+  const version = useStoreVersion();
+  const [staff, setStaff] = useState(() => withStatus(getPersistedStaff()));
+  const [halls, setHalls] = useState(() => getPersistedHalls());
+
+  useEffect(() => {
+    setHalls(getPersistedHalls());
+    setStaff(withStatus(getPersistedStaff()));
+  }, [version]);
+
   const [showModal, setShowModal] = useState(false);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [generatedCredentials, setGeneratedCredentials] = useState(null);
@@ -51,10 +71,7 @@ export default function Staff({ user }) {
 
   const [formData, setFormData] = useState({
     name: '',
-    email: '',
-    role: 'technician',
-    hallId: '1',
-    specialty: 'electrical',
+    hallId: '',
     status: 'active',
     password: ''
   });
@@ -64,11 +81,8 @@ export default function Staff({ user }) {
     setEditingStaff(null);
     setFormData({
       name: '',
-      email: '',
-      role: 'technician',
-      hallId: user?.hallId || '',
-      specialty: '',
-      status: '',
+      hallId: '',
+      status: 'active',
       password: ''
     });
     setShowModal(true);
@@ -77,19 +91,9 @@ export default function Staff({ user }) {
   // ===== EDIT STAFF =====
   const handleEditStaff = (staffMember) => {
     setEditingStaff(staffMember);
-    const currentAdmins = getPersistedAdmins();
-    const adminObj = currentAdmins.find(a => a.email.toLowerCase() === staffMember.email.toLowerCase()) || {};
-    
-    const specialty = adminObj.role === 'hall_admin'
-      ? 'hall-admin'
-      : (adminObj.specialty || 'electrical');
-
     setFormData({
       name: staffMember.name,
-      email: staffMember.email,
-      role: adminObj.role || 'technician',
-      hallId: adminObj.hallId || '1',
-      specialty,
+      hallId: staffMember.hallId || '',
       status: staffMember.status,
       password: ''
     });
@@ -97,24 +101,19 @@ export default function Staff({ user }) {
   };
 
   // ===== DELETE STAFF =====
-  const handleDeleteStaff = (id) => {
-    if (window.confirm('Are you sure you want to delete this staff member?')) {
-      const updatedStaff = staff.filter(member => member.id !== id);
-      setStaff(updatedStaff);
-      savePersistedStaff(updatedStaff);
+  // Deletes the real Supabase Auth account + profile, not just the row in
+  // this page's local state.
+  const handleDeleteStaff = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this staff member?')) return;
 
-      // Remove from admins too
-      const currentStaffMember = staff.find(member => member.id === id);
-      if (currentStaffMember) {
-        const currentAdmins = getPersistedAdmins();
-        const updatedAdmins = currentAdmins.filter(admin => admin.email !== currentStaffMember.email);
-        savePersistedAdmins(updatedAdmins);
-      }
+    const res = await deleteStaffAccount(id);
+    if (res?.error) {
+      alert('Error deleting staff account: ' + res.error);
     }
   };
 
   // ===== SAVE STAFF (Add or Update) =====
-  const handleSaveStaff = () => {
+  const handleSaveStaff = async () => {
     if (!formData.name) {
       alert('Please fill in Name');
       return;
@@ -123,222 +122,131 @@ export default function Staff({ user }) {
       alert('Please select a Residence Hall');
       return;
     }
-    if (!formData.specialty) {
-      alert('Please select a Specialty / Role');
-      return;
-    }
     if (!formData.status) {
       alert('Please select a Status');
       return;
     }
 
-    // Only the super admin can create hall admins; hall admins manage technicians only.
-    if (formData.specialty === 'hall-admin' && !isSuperAdmin) {
-      alert('Only the Super Admin can create Hall Admins. You can add technicians for your hall.');
+    const selectedHallObj = halls.find(h => String(h.id) === String(formData.hallId));
+    const hallName = selectedHallObj ? selectedHallObj.name : 'Selected Hall';
+    const hallCode = selectedHallObj && selectedHallObj.code
+      ? selectedHallObj.code.toLowerCase()
+      : (selectedHallObj ? selectedHallObj.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'hall');
+
+    if (editingStaff) {
+      // Persist to Supabase. Role is intentionally not editable here — the
+      // only role this page creates is hall_admin, and changing someone's
+      // role is rare enough to not warrant a dropdown that could also
+      // (mis)promote a student or a super admin.
+      const res = await updateStaffProfile(editingStaff.id, {
+        name: formData.name,
+        hallId: formData.hallId,
+        isActive: formData.status === 'active'
+      });
+
+      if (res?.error) {
+        alert('Error updating staff account: ' + res.error);
+        return;
+      }
+
+      setShowModal(false);
       return;
     }
 
-    const hallNames = {
-      '1': 'Unity Hall',
-      '2': 'Independence Hall',
-      '3': 'Republic Hall',
-      '4': 'Africa Hall',
-      '5': 'University Hall',
-      '6': 'Queen Elizabeth II Hall'
-    };
-
-    const hallCodes = {
-      '1': 'unity',
-      '2': 'independence',
-      '3': 'republic',
-      '4': 'africa',
-      '5': 'university',
-      '6': 'queenshall'
-    };
-
-    const specialties = {
-      'hall-admin': { label: 'Hall Admin', icon: '🏛️' },
-      'electrical': { label: 'Electrical', icon: '⚡' },
-      'plumbing': { label: 'Plumbing', icon: '🔧' },
-      'carpentry': { label: 'Carpentry', icon: '🪚' },
-      'masonry': { label: 'Masonry', icon: '🧱' }
-    };
-
-    const hallName = hallNames[formData.hallId] || 'All Halls';
-    const hallCode = hallCodes[formData.hallId] || 'hall';
-    const specInfo = specialties[formData.specialty] || { label: 'General', icon: '🔧' };
-
-    // "Hall Admin" is a role, not a technician specialty. When selected we
-    // create a real hall_admin account (Admin Portal) instead of a technician.
-    const isHallAdmin = formData.specialty === 'hall-admin';
-    const staffRole = isHallAdmin ? 'Hall Admin' : `${specInfo.label} Technician`;
-    const loginRole = isHallAdmin ? 'hall_admin' : 'technician';
-    const loginPortal = 'Admin Portal';
-
-    // Auto-generate email: [firstname].[lastname]@[hallcode].snapfix.com
-    // If no surname is given, fall back to the person's role/specialty.
-    const nameParts = formData.name.trim().toLowerCase().split(/\s+/);
-    const firstName = nameParts[0] || 'staff';
-    const lastName = nameParts.slice(1).join('.') || formData.specialty;
-    const email = `${firstName}.${lastName}@${hallCode}.snapfix.com`;
-
-    if (editingStaff) {
-      // Update existing staff
-      const updatedStaff = staff.map(member =>
-        member.id === editingStaff.id
-          ? {
-              ...member,
-              name: formData.name,
-              email,
-              role: staffRole,
-              status: formData.status
-            }
-          : member
-      );
-      setStaff(updatedStaff);
-      savePersistedStaff(updatedStaff);
-
-      // Also update in admins list if they exist there
-      const allAdmins = getPersistedAdmins();
-      const updatedAdmins = allAdmins.map(admin => {
-        if (admin.email.toLowerCase() === editingStaff.email.toLowerCase()) {
-          return {
-            ...admin,
-            name: formData.name,
-            email,
-            role: loginRole,
-            hallId: formData.hallId,
-            hallName,
-            specialty: isHallAdmin ? null : formData.specialty,
-            specialtyLabel: isHallAdmin ? null : specInfo.label,
-            specialtyIcon: isHallAdmin ? null : specInfo.icon
-          };
-        }
-        return admin;
-      });
-      savePersistedAdmins(updatedAdmins);
-      setShowModal(false);
-    } else {
-      // Add new staff
-      if (!formData.password) {
-        alert('Please enter a Password.');
-        return;
-      }
-      const newStaffId = 't' + Date.now().toString();
-
-      const newStaffMember = {
-        id: newStaffId,
-        name: formData.name,
-        email,
-        role: staffRole,
-        status: formData.status
-      };
-
-      const updatedStaff = [...staff, newStaffMember];
-      setStaff(updatedStaff);
-      savePersistedStaff(updatedStaff);
-
-      const newAdminObj = {
-        id: newStaffId,
-        email,
-        password: formData.password,
-        name: formData.name,
-        role: loginRole,
-        hallId: formData.hallId,
-        hallName,
-        // Technician specialty fields are omitted for hall admins.
-        ...(isHallAdmin ? {} : {
-          specialty: formData.specialty,
-          specialtyLabel: specInfo.label,
-          specialtyIcon: specInfo.icon
-        })
-      };
-
-      const currentAdmins = getPersistedAdmins();
-      currentAdmins.push(newAdminObj);
-      savePersistedAdmins(currentAdmins);
-
-      // Set credentials info to display to user
-      setGeneratedCredentials({
-        name: formData.name,
-        role: staffRole,
-        email,
-        password: formData.password,
-        portal: loginPortal
-      });
-
-      setShowModal(false);
-      setShowCredentialsModal(true);
+    // Add new staff — always a hall_admin; create_staff_account() rejects
+    // anything else now that the technician role is gone.
+    if (!formData.password) {
+      alert('Please enter a Password.');
+      return;
     }
+
+    // Auto-generate email: [firstname].[lastname]@[hallcode].resifix.com
+    const nameParts = formData.name.trim().toLowerCase().split(/\s+/);
+    const firstName = nameParts[0] || 'admin';
+    const lastName = nameParts.slice(1).join('.') || 'admin';
+    const email = `${firstName}.${lastName}@${hallCode}.resifix.com`;
+
+    const res = await createStaffAccount({
+      email,
+      password: formData.password,
+      name: formData.name,
+      role: 'hall_admin',
+      hallId: formData.hallId
+    });
+
+    if (res?.error) {
+      alert('Error creating staff account: ' + res.error);
+      return;
+    }
+
+    setGeneratedCredentials({
+      name: formData.name,
+      role: 'Hall Admin',
+      hallName,
+      email,
+      password: formData.password,
+      portal: `${hallName} Admin Portal`
+    });
+
+    setShowModal(false);
+    setShowCredentialsModal(true);
   };
 
   // ===== TOGGLE STAFF STATUS =====
-  const toggleStatus = (id) => {
-    const updatedStaff = staff.map(member => 
-      member.id === id 
-        ? { ...member, status: member.status === 'active' ? 'inactive' : 'active' }
-        : member
-    );
-    setStaff(updatedStaff);
-    savePersistedStaff(updatedStaff);
+  const toggleStatus = async (member) => {
+    const res = await updateStaffProfile(member.id, {
+      isActive: member.status !== 'active'
+    });
+    if (res?.error) {
+      alert('Error updating status: ' + res.error);
+    }
   };
 
   // ===== RESET CREDENTIALS =====
-  const handleResetCredentials = (member) => {
-    if (window.confirm(`Are you sure you want to reset credentials for ${member.name}?`)) {
-      const newPassword = window.prompt(`Enter new password for ${member.name}:`);
-      if (newPassword === null) return; // user cancelled
-      const trimmed = newPassword.trim();
-      if (!trimmed) {
-        alert('Password cannot be empty.');
-        return;
-      }
+  const handleResetCredentials = async (member) => {
+    if (!window.confirm(`Are you sure you want to reset credentials for ${member.name}?`)) return;
 
-      const currentAdmins = getPersistedAdmins();
-      const adminIndex = currentAdmins.findIndex(a => a.email.toLowerCase() === member.email.toLowerCase());
-      
-      if (adminIndex !== -1) {
-        currentAdmins[adminIndex].password = trimmed;
-        savePersistedAdmins(currentAdmins);
-        
-        setGeneratedCredentials({
-          name: member.name,
-          role: member.role,
-          email: member.email,
-          password: trimmed,
-          portal: 'Admin Portal'
-        });
-        
-        setShowCredentialsModal(true);
-      } else {
-        alert('Admin account not found for this staff member.');
-      }
+    const newPassword = window.prompt(`Enter new password for ${member.name}:`);
+    if (newPassword === null) return; // user cancelled
+    const trimmed = newPassword.trim();
+    if (trimmed.length < 6) {
+      alert('Password must be at least 6 characters long.');
+      return;
     }
+
+    const res = await setStaffPassword(member.id, trimmed);
+    if (res?.error) {
+      alert('Error resetting credentials: ' + res.error);
+      return;
+    }
+
+    setGeneratedCredentials({
+      name: member.name,
+      role: roleLabel(member.role),
+      email: member.email,
+      password: trimmed,
+      portal: 'Admin Portal'
+    });
+
+    setShowCredentialsModal(true);
   };
 
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState(''); // '', 'admin', 'technician'
+  const [roleFilter, setRoleFilter] = useState(''); // '', 'hall_admin', 'super_admin'
+  const [hallFilter, setHallFilter] = useState(''); // '', hallId
 
-  const currentAdmins = getPersistedAdmins();
-  const baseStaff = staff.filter(member => {
-    if (isSuperAdmin) return true; // Super admin sees all staff
-    const adminObj = currentAdmins.find(a => a.email.toLowerCase() === member.email.toLowerCase());
-    // Hall admins manage only the technicians in their own hall.
-    return adminObj?.hallId === user.hallId && adminObj?.role === 'technician';
-  });
-
-  // Apply filters
-  const displayedStaff = baseStaff.filter(member => {
-    const matchesSearch = member.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  // This page is super_admin-only (see App.js), so every hall admin (and any
+  // other super admin) is in scope — no hall-based restriction like the
+  // technician-era version had.
+  const displayedStaff = staff.filter(member => {
+    const matchesSearch = member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           member.email.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const roleLower = member.role.toLowerCase();
-    const matchesRole = roleFilter === '' ||
-      (roleFilter === 'admin' && roleLower.includes('admin')) ||
-      (roleFilter === 'technician' && roleLower.includes('technician'));
 
-    return matchesSearch && matchesRole;
+    const matchesRole = roleFilter === '' || member.role === roleFilter;
+    const matchesHall = hallFilter === '' || String(member.hallId) === String(hallFilter);
+
+    return matchesSearch && matchesRole && matchesHall;
   });
 
   const getInitials = (name) => {
@@ -353,8 +261,8 @@ export default function Staff({ user }) {
   // Metrics calculation
   const totalStaffCount = displayedStaff.length;
   const activeStaffCount = displayedStaff.filter(s => s.status === 'active').length;
-  const techniciansCount = displayedStaff.filter(s => s.role.toLowerCase().includes('technician')).length;
-  const adminCount = displayedStaff.filter(s => s.role.toLowerCase().includes('admin')).length;
+  const hallAdminCount = displayedStaff.filter(s => s.role === 'hall_admin').length;
+  const superAdminCount = displayedStaff.filter(s => s.role === 'super_admin').length;
 
   return (
     <div className="font-body-md">
@@ -363,10 +271,7 @@ export default function Staff({ user }) {
         <div>
           <h2 className="font-headline-xl text-headline-xl font-bold text-deep-charcoal tracking-tight">Staff Management</h2>
           <p className="text-secondary font-body-lg mt-1">
-            {isSuperAdmin 
-              ? 'Institutional records for all personnel and operational technicians'
-              : `Personnel and operational technicians in ${user?.hallName}`
-            }
+            Institutional records for hall administrator accounts
           </p>
         </div>
       </header>
@@ -395,22 +300,22 @@ export default function Staff({ user }) {
         </div>
         <div className="bg-white border border-outline p-6 rounded shadow-sm">
           <div className="flex justify-between items-start mb-2">
-            <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Technicians</p>
-            <span className="material-symbols-outlined text-secondary text-lg">engineering</span>
+            <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Hall Admins</p>
+            <span className="material-symbols-outlined text-secondary text-lg">admin_panel_settings</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <p className="text-4xl font-black italic">{techniciansCount}</p>
-            <p className="text-[10px] font-bold text-secondary uppercase">Operational</p>
+            <p className="text-4xl font-black italic">{hallAdminCount}</p>
+            <p className="text-[10px] font-bold text-secondary uppercase">Per-Hall</p>
           </div>
         </div>
         <div className="bg-white border border-outline p-6 rounded shadow-sm">
           <div className="flex justify-between items-start mb-2">
-            <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Admin Staff</p>
-            <span className="material-symbols-outlined text-secondary text-lg">admin_panel_settings</span>
+            <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Super Admins</p>
+            <span className="material-symbols-outlined text-secondary text-lg">shield_person</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <p className="text-4xl font-black italic">{adminCount}</p>
-            <p className="text-[10px] font-bold text-secondary uppercase">Supervisory</p>
+            <p className="text-4xl font-black italic">{superAdminCount}</p>
+            <p className="text-[10px] font-bold text-secondary uppercase">Institutional</p>
           </div>
         </div>
       </div>
@@ -420,35 +325,51 @@ export default function Staff({ user }) {
         <div className="flex flex-1 items-center gap-4 w-full md:max-w-2xl">
           <div className="relative flex-1">
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary">search</span>
-            <input 
-              className="w-full pl-12 pr-4 py-3 bg-white border border-outline rounded-xl focus:ring-1 focus:ring-deep-charcoal focus:border-deep-charcoal outline-none transition-all text-sm font-medium" 
-              placeholder="Search by name or email..." 
+            <input
+              className="w-full pl-12 pr-4 py-3 bg-white border border-outline rounded-xl focus:ring-1 focus:ring-deep-charcoal focus:border-deep-charcoal outline-none transition-all text-sm font-medium"
+              placeholder="Search by name or email..."
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          
+
           <div className="relative">
-            <select 
+            <select
               className="appearance-none pl-4 pr-10 py-3 bg-white border border-outline rounded-xl focus:ring-1 focus:ring-deep-charcoal outline-none cursor-pointer text-sm font-medium min-w-[150px]"
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
             >
               <option value="">All Roles</option>
-              <option value="admin">Admin</option>
-              <option value="technician">Technician</option>
+              <option value="hall_admin">Hall Admin</option>
+              <option value="super_admin">Super Admin</option>
+            </select>
+            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">expand_more</span>
+          </div>
+
+          <div className="relative">
+            <select
+              className="appearance-none pl-4 pr-10 py-3 bg-white border border-outline rounded-xl focus:ring-1 focus:ring-deep-charcoal outline-none cursor-pointer text-sm font-medium min-w-[170px]"
+              value={hallFilter}
+              onChange={(e) => setHallFilter(e.target.value)}
+            >
+              <option value="">All Residence Halls</option>
+              {halls.map((hall) => (
+                <option key={hall.id} value={hall.id}>
+                  {hall.name}
+                </option>
+              ))}
             </select>
             <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">expand_more</span>
           </div>
         </div>
 
-        <button 
+        <button
           className="flex items-center gap-2 px-6 py-3 bg-deep-charcoal text-white rounded-xl text-sm font-bold hover:bg-black transition-all shadow-sm"
           onClick={handleAddStaff}
         >
           <span className="material-symbols-outlined text-[20px]">person_add</span>
-          Register New Personnel
+          Register New Hall Admin
         </button>
       </div>
 
@@ -468,22 +389,21 @@ export default function Staff({ user }) {
             {displayedStaff.length === 0 ? (
               <tr>
                 <td colSpan="5" className="px-6 py-10 text-center text-secondary font-medium">
-                  No staff members found. Click "Register New Personnel" to add one.
+                  No staff members found. Click "Register New Hall Admin" to add one.
                 </td>
               </tr>
             ) : (
               displayedStaff.map((member) => {
-                const adminObj = currentAdmins.find(a => a.email.toLowerCase() === member.email.toLowerCase()) || {};
-                const registryHall = adminObj.hallName || 'All Halls';
-                const isMemberAdmin = member.role.toLowerCase().includes('admin');
+                const registryHall = member.hallName || 'All Halls';
+                const isSuper = member.role === 'super_admin';
                 const isActive = member.status === 'active';
-                
+
                 return (
                   <tr key={member.id} className="hover:bg-neutral-50 transition-colors">
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-4">
                         <div className={`w-10 h-10 rounded flex items-center justify-center font-black text-xs ${
-                          isMemberAdmin ? 'bg-black text-white' : 'border-2 border-black text-black'
+                          isSuper ? 'bg-black text-white' : 'border-2 border-black text-black'
                         }`}>
                           {getInitials(member.name)}
                         </div>
@@ -495,19 +415,19 @@ export default function Staff({ user }) {
                     </td>
                     <td className="px-6 py-5">
                       <span className={`inline-block px-3 py-1 text-[9px] font-black uppercase tracking-widest ${
-                        isMemberAdmin 
-                          ? 'bg-black text-white' 
+                        isSuper
+                          ? 'bg-black text-white'
                           : 'border border-black text-black'
                       }`}>
-                        {member.role}
+                        {roleLabel(member.role)}
                       </span>
                     </td>
                     <td className="px-6 py-5 text-xs font-bold text-on-surface uppercase tracking-wide">
                       {registryHall}
                     </td>
                     <td className="px-6 py-5">
-                      <button 
-                        onClick={() => toggleStatus(member.id)}
+                      <button
+                        onClick={() => toggleStatus(member)}
                         className="flex items-center gap-2"
                         title="Toggle status"
                       >
@@ -518,21 +438,21 @@ export default function Staff({ user }) {
                       </button>
                     </td>
                     <td className="px-6 py-5 text-right space-x-2">
-                      <button 
+                      <button
                         className="p-2 hover:bg-black hover:text-white rounded transition-all border border-transparent text-secondary"
                         onClick={() => handleEditStaff(member)}
                         title="Edit Details"
                       >
                         <span className="material-symbols-outlined text-[20px]">edit_note</span>
                       </button>
-                      <button 
+                      <button
                         className="p-2 hover:bg-black hover:text-white rounded transition-all border border-transparent text-secondary"
                         onClick={() => handleResetCredentials(member)}
                         title="Reset Password"
                       >
                         <span className="material-symbols-outlined text-[20px]">shield_person</span>
                       </button>
-                      <button 
+                      <button
                         className="p-2 hover:bg-black hover:text-white rounded transition-all border border-transparent text-secondary hover:text-error"
                         onClick={() => handleDeleteStaff(member.id)}
                         title="Delete Personnel"
@@ -555,7 +475,7 @@ export default function Staff({ user }) {
           <div className="modal-content bg-white border border-border-medium rounded-xl p-8 max-w-md w-full shadow-2xl">
             <h2 className="text-xl font-bold text-deep-charcoal mb-6 flex items-center gap-2">
               <span className="material-symbols-outlined text-[22px]">{editingStaff ? 'edit' : 'person_add'}</span>
-              {editingStaff ? 'Edit Staff' : 'Add New Staff'}
+              {editingStaff ? 'Edit Staff' : 'Add New Hall Admin'}
             </h2>
 
             <div className="space-y-4">
@@ -578,7 +498,6 @@ export default function Staff({ user }) {
                   <select
                     value={formData.hallId}
                     onChange={(e) => setFormData({ ...formData, hallId: e.target.value })}
-                    disabled={!!user?.hallId}
                     className="w-full premium-select appearance-none cursor-pointer"
                   >
                     <option value="" disabled>Select Residence Hall</option>
@@ -593,21 +512,9 @@ export default function Staff({ user }) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-black/60 block ml-0.5">Role / Specialty *</label>
-                <div className="relative">
-                  <select
-                    value={formData.specialty}
-                    onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
-                    className="w-full premium-select appearance-none cursor-pointer"
-                  >
-                    <option value="" disabled>Select Role / Specialty</option>
-                    {isSuperAdmin && <option value="hall-admin">Hall Admin</option>}
-                    <option value="electrical">Electrical</option>
-                    <option value="plumbing">Plumbing</option>
-                    <option value="carpentry">Carpentry</option>
-                    <option value="masonry">Masonry</option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">expand_more</span>
+                <label className="text-xs font-bold text-black/60 block ml-0.5">Role</label>
+                <div className="w-full premium-input bg-surface-low text-secondary">
+                  {editingStaff ? roleLabel(editingStaff.role) : 'Hall Admin'}
                 </div>
               </div>
 
@@ -681,9 +588,15 @@ export default function Staff({ user }) {
                 <span className="text-sm font-semibold text-deep-charcoal">{generatedCredentials.name}</span>
               </div>
               <div>
-                <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block mb-0.5">Role / Specialty</span>
+                <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block mb-0.5">Role</span>
                 <span className="text-sm font-semibold text-deep-charcoal">{generatedCredentials.role}</span>
               </div>
+              {generatedCredentials.hallName && (
+                <div>
+                  <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block mb-0.5">Assigned Hall</span>
+                  <span className="text-sm font-semibold text-deep-charcoal">{generatedCredentials.hallName}</span>
+                </div>
+              )}
               <div>
                 <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block mb-0.5">Email Address</span>
                 <span className="text-sm font-mono font-bold text-deep-charcoal">{generatedCredentials.email}</span>
@@ -717,9 +630,9 @@ export default function Staff({ user }) {
                       ⏳ Password Reset Link (Expires in 30m)
                     </span>
                     <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        readOnly 
+                      <input
+                        type="text"
+                        readOnly
                         value={resetLink}
                         className="flex-1 px-3 py-2 bg-status-critical-bg border border-status-critical-border rounded-lg text-xs font-mono text-status-critical-text outline-none select-all"
                         onClick={(e) => e.target.select()}

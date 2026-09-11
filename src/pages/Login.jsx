@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAdminByEmail } from '../data/mockData';
+import supabase from '../lib/supabase';
+import { hydrate, startRealtime } from '../data/store';
 import '../styles/Login.css';
 
 export default function Login({ setUser }) {
-  const [activeTab, setActiveTab] = useState('staff'); // 'staff' or 'tech'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,34 +20,67 @@ export default function Login({ setUser }) {
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
 
+  const [submitting, setSubmitting] = useState(false);
+
+  // Supabase sends recovery links back here with the tokens in the URL
+  // fragment (#access_token=...&type=recovery). The client picks that up and
+  // establishes a short-lived session, which is what authorises the password
+  // change below.
+  //
+  // This replaces a hand-rolled ?token=<base64> scheme that encoded only an
+  // email and an expiry — anyone could mint one in the browser console and
+  // reset any account's password.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('reset') === 'true' && params.get('token')) {
-      try {
-        const decoded = JSON.parse(atob(params.get('token')));
-        if (decoded.email && decoded.expiresAt) {
-          if (Date.now() > decoded.expiresAt) {
-            setResetError('This password reset link has expired (links are only valid for 30 minutes). Please contact your administrator.');
-            setResetFlow(true);
-          } else {
-            setResetEmail(decoded.email);
-            setResetFlow(true);
-          }
-        }
-      } catch (e) {
-        setResetError('Invalid or corrupted password reset link.');
-        setResetFlow(true);
-      }
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    if (hash.get('type') === 'recovery') {
+      setResetFlow(true);
     }
+    if (hash.get('error_description')) {
+      setResetFlow(true);
+      setResetError(decodeURIComponent(hash.get('error_description')));
+    }
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setResetFlow(true);
+        setResetEmail(session?.user?.email || '');
+      }
+    });
+
+    return () => listener.subscription.unsubscribe();
   }, []);
 
-  const handleResetPassword = (e) => {
+  /** Emails a recovery link to the address in the sign-in field. */
+  const handleSendResetLink = async () => {
+    setResetError('');
+    setResetSuccess('');
+
+    const target = (resetEmail || email).trim();
+    if (!target) {
+      setResetError('Enter your email address first.');
+      return;
+    }
+
+    const { error: resetLinkError } = await supabase.auth.resetPasswordForEmail(target, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+
+    if (resetLinkError) {
+      setResetError(resetLinkError.message);
+      return;
+    }
+
+    // Deliberately not revealing whether the address exists.
+    setResetSuccess(`If an account exists for ${target}, a reset link is on its way.`);
+  };
+
+  const handleResetPassword = async (e) => {
     e.preventDefault();
     setResetError('');
     setResetSuccess('');
 
-    if (resetNewPassword.length < 4) {
-      setResetError('Password must be at least 4 characters long.');
+    if (resetNewPassword.length < 8) {
+      setResetError('Password must be at least 8 characters long.');
       return;
     }
 
@@ -56,71 +89,90 @@ export default function Login({ setUser }) {
       return;
     }
 
-    const rawAdmins = localStorage.getItem('snapfix_admins');
-    if (rawAdmins) {
-      try {
-        const adminsList = JSON.parse(rawAdmins);
-        const adminIndex = adminsList.findIndex(a => a.email.toLowerCase() === resetEmail.toLowerCase());
-        
-        if (adminIndex !== -1) {
-          adminsList[adminIndex].password = resetNewPassword;
-          localStorage.setItem('snapfix_admins', JSON.stringify(adminsList));
-          
-          setResetSuccess('Password has been reset successfully! Redirecting to login...');
-          
-          const role = adminsList[adminIndex].role;
-          
-          setTimeout(() => {
-            setResetFlow(false);
-            setActiveTab(role === 'technician' ? 'tech' : 'staff');
-            setEmail(resetEmail);
-            setPassword(resetNewPassword);
-            navigate('/login', { replace: true });
-            setResetNewPassword('');
-            setResetConfirmPassword('');
-            setResetSuccess('');
-          }, 2000);
-        } else {
-          setResetError('User account not found.');
-        }
-      } catch (err) {
-        setResetError('An error occurred while resetting the password.');
-      }
-    } else {
-      setResetError('Account data not found.');
+    // Only works while the recovery session from the emailed link is active.
+    const { error: updateError } = await supabase.auth.updateUser({ password: resetNewPassword });
+
+    if (updateError) {
+      setResetError(
+        `${updateError.message}. Reset links can only be used once, and expire — request a new one if needed.`
+      );
+      return;
     }
+
+    setResetSuccess('Password has been reset successfully! Redirecting to login...');
+    await supabase.auth.signOut();
+
+    setTimeout(() => {
+      setResetFlow(false);
+      setResetNewPassword('');
+      setResetConfirmPassword('');
+      setResetSuccess('');
+      navigate('/login', { replace: true });
+      window.location.hash = '';
+    }, 2000);
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setSubmitting(true);
 
-    const admin = getAdminByEmail(email);
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
-    if (admin && admin.password === password) {
-      // Validate role compatibility with selected tab
-      if (activeTab === 'tech' && admin.role !== 'technician') {
-        setError('Please use the Hall Admin tab to sign in with an Administrator account.');
+      if (signInError || !data.user) {
+        // Supabase returns one generic message for a wrong password and an
+        // unknown address, which is what we want to show — telling an
+        // attacker which accounts exist is worse than a vague error.
+        setError('Invalid email or password. Please check your credentials.');
         return;
       }
-      if (activeTab === 'staff' && admin.role === 'technician') {
-        setError('Please use the Technician tab to sign in with a Technician account.');
+
+      // The role lives in the database, so the tab check below cannot be
+      // bypassed by editing anything client-side.
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role, hall_id, specialty, halls(name)')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        await supabase.auth.signOut();
+        setError('Your account has no profile on this system. Contact your administrator.');
         return;
       }
 
-      localStorage.setItem('adminUser', JSON.stringify(admin));
-      setUser(admin);
+      if (profile.role === 'student') {
+        await supabase.auth.signOut();
+        setError('This is the staff dashboard. Students should use the ResiFix KNUST mobile app.');
+        return;
+      }
+
+      const sessionUser = {
+        id: profile.id,
+        name: profile.full_name || profile.email,
+        email: profile.email,
+        role: profile.role,
+        hallId: profile.hall_id,
+        hallName: profile.halls?.name || 'All Halls',
+        specialty: profile.specialty,
+      };
+
+      // Load the data before navigating so the dashboard does not flash empty.
+      await hydrate();
+      startRealtime();
+
+      setUser(sessionUser);
       navigate('/');
-    } else {
-      setError('Invalid email or password. Please check your credentials.');
+    } catch (err) {
+      console.error('[Login] unexpected failure:', err);
+      setError('Could not reach the server. Check your connection and try again.');
+    } finally {
+      setSubmitting(false);
     }
-  };
-
-  const handleTabSwitch = (tab) => {
-    setActiveTab(tab);
-    setError('');
-    setEmail('');
-    setPassword('');
   };
 
   return (
@@ -267,33 +319,7 @@ export default function Login({ setUser }) {
             <>
               <div className="mb-6">
                 <h2 className="text-xl font-bold text-black mb-1">Portal Access</h2>
-                <p className="text-xs text-black/60">Select your institutional role to continue.</p>
-              </div>
-
-              {/* Segmented Tab */}
-              <div className="flex p-1 bg-surface-container rounded-lg mb-6">
-                <button 
-                  type="button"
-                  className={`flex-1 py-2 px-4 rounded-lg font-semibold text-xs transition-all duration-200 ${
-                    activeTab === 'staff' 
-                      ? 'bg-white shadow-sm text-black' 
-                      : 'text-secondary hover:text-black'
-                  }`}
-                  onClick={() => handleTabSwitch('staff')}
-                >
-                  Hall Admin
-                </button>
-                <button 
-                  type="button"
-                  className={`flex-1 py-2 px-4 rounded-lg font-semibold text-xs transition-all duration-200 ${
-                    activeTab === 'tech' 
-                      ? 'bg-white shadow-sm text-black' 
-                      : 'text-secondary hover:text-black'
-                  }`}
-                  onClick={() => handleTabSwitch('tech')}
-                >
-                  Technician
-                </button>
+                <p className="text-xs text-black/60">Sign in with your administrator account.</p>
               </div>
 
               {/* Error Alert */}
@@ -324,7 +350,16 @@ export default function Login({ setUser }) {
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center px-0.5">
                     <label className="text-xs font-bold text-black/60 block" htmlFor="password">Password</label>
-                    <a className="text-[10px] font-bold text-secondary hover:text-black transition-colors" href="#forgot" onClick={(e) => e.preventDefault()}>Forgot Password?</a>
+                    <a
+                      className="text-[10px] font-bold text-secondary hover:text-black transition-colors"
+                      href="#forgot"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleSendResetLink();
+                      }}
+                    >
+                      Forgot Password?
+                    </a>
                   </div>
                   <div className="relative group">
                     <input 
@@ -362,11 +397,12 @@ export default function Login({ setUser }) {
                 </div>
 
                 {/* Login Button */}
-                <button 
-                  className="w-full py-3 bg-black hover:bg-neutral-900 text-white rounded-lg font-bold text-sm transition-all shadow-sm mt-6"
+                <button
+                  className="w-full py-3 bg-black hover:bg-neutral-900 text-white rounded-lg font-bold text-sm transition-all shadow-sm mt-6 disabled:opacity-60"
                   type="submit"
+                  disabled={submitting}
                 >
-                  Login to Portal
+                  {submitting ? 'Signing in…' : 'Login to Portal'}
                 </button>
               </form>
             </>

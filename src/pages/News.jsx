@@ -1,6 +1,13 @@
 // src/pages/News.jsx - DEDICATED NEWS PAGE WITH IMAGE AND VIDEO UPLOAD SUPPORT
 import React, { useState, useEffect } from 'react';
-import { getNewsByHall, getPersistedHalls } from '../data/mockData';
+import {
+  getNewsByHall,
+  getPersistedHalls,
+  createNews,
+  deleteNews,
+  uploadFile,
+  useStoreVersion,
+} from '../data/mockData';
 
 export default function News({ user }) {
   const isSuperAdmin = user?.role === 'super_admin';
@@ -18,93 +25,94 @@ export default function News({ user }) {
   const [mediaType, setMediaType] = useState(''); // 'image' or 'video'
   const [newsHallId, setNewsHallId] = useState('all'); // used for super_admin posting when "All Halls" is active
 
-  // Load halls and initial news
+  const [posting, setPosting] = useState(false);
+  const version = useStoreVersion();
+
   useEffect(() => {
     setHalls(getPersistedHalls());
-  }, []);
+  }, [version]);
 
   useEffect(() => {
     const hallId = isSuperAdmin ? selectedHall : user?.hallId;
     const hallNews = getNewsByHall(hallId);
     const sortedNews = [...hallNews].sort((a, b) => new Date(b.date) - new Date(a.date));
     setNews(sortedNews);
-  }, [user, selectedHall, isSuperAdmin]);
+  }, [user, selectedHall, isSuperAdmin, version]);
 
-  const handleFileChange = (e) => {
+  // Attachments go to Supabase Storage now, so the old 2 MB base64 cap
+  // (which existed only to keep localStorage from overflowing) is gone —
+  // the bucket accepts up to 20 MB. Students see the same URL in the app.
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Check size limit: 2MB (to avoid localStorage exhaustion)
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Selected file is too large! Please choose an image or video file under 2MB.');
-      e.target.value = null; // Clear file input
+    if (file.size > 20 * 1024 * 1024) {
+      alert('Selected file is too large! Please choose a file under 20MB.');
+      e.target.value = null;
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setMediaUri(reader.result);
-      setMediaType(file.type.startsWith('video/') ? 'video' : 'image');
-    };
-    reader.readAsDataURL(file);
+    // Show it immediately while the upload runs.
+    setMediaType(file.type.startsWith('video/') ? 'video' : 'image');
+    setMediaUri(URL.createObjectURL(file));
+
+    const { url, error } = await uploadFile(file, 'news');
+    if (error) {
+      alert(`Could not upload that file: ${error}`);
+      setMediaUri('');
+      setMediaType('');
+      e.target.value = null;
+      return;
+    }
+    setMediaUri(url);
   };
 
-  const handlePostNews = (e) => {
+  const handlePostNews = async (e) => {
     e.preventDefault();
     if (!isAdmin) {
-      alert('Technicians and non-admins are not allowed to post announcements.');
+      alert('Only Hall Admins and Super Admins are allowed to post announcements.');
       return;
     }
     if (!title.trim() || !content.trim()) return;
 
-    const targetHallId = isSuperAdmin 
-      ? (selectedHall || newsHallId) 
-      : user?.hallId;
+    // A super admin viewing "All Halls" can target one hall or, with
+    // newsHallId 'all', publish system-wide (hall_id null).
+    const picked = isSuperAdmin ? selectedHall || newsHallId : user?.hallId;
+    const targetHallId = picked === 'all' ? null : picked;
 
-    if (!targetHallId) {
+    if (!targetHallId && !isSuperAdmin) {
       alert('Please select a hall to post news.');
       return;
     }
 
-    const allNews = JSON.parse(localStorage.getItem('snapfix_news') || '[]');
-    const newPost = {
-      id: 'n' + Date.now(),
+    setPosting(true);
+    const { error } = await createNews({
       hallId: targetHallId,
       title: title.trim(),
       content: content.trim(),
-      mediaUri: mediaUri || null,
-      mediaType: mediaType || null,
-      date: new Date().toISOString(),
-      author: user?.name || 'Administrator'
-    };
+      author: user?.name || 'Administrator',
+      image: mediaUri || null,
+    });
+    setPosting(false);
 
-    const updatedNewsList = [newPost, ...allNews];
-    localStorage.setItem('snapfix_news', JSON.stringify(updatedNewsList));
+    if (error) {
+      alert(`Could not publish this announcement: ${error}`);
+      return;
+    }
 
-    // Clear and close modal
     setTitle('');
     setContent('');
     setMediaUri('');
     setMediaType('');
     setShowModal(false);
-
-    // Refresh state
-    const hallId = isSuperAdmin ? selectedHall : user?.hallId;
-    const currentHallNews = updatedNewsList.filter(n => !hallId || String(n.hallId) === String(hallId) || String(n.hallId) === 'all');
-    setNews(currentHallNews.sort((a, b) => new Date(b.date) - new Date(a.date)));
+    // The store updates the cache and the version bump refreshes the list.
   };
 
-  const handleDeleteNews = (id) => {
-    if (window.confirm('Are you sure you want to delete this news post?')) {
-      const allNews = JSON.parse(localStorage.getItem('snapfix_news') || '[]');
-      const updatedNewsList = allNews.filter(post => post.id !== id);
-      localStorage.setItem('snapfix_news', JSON.stringify(updatedNewsList));
+  const handleDeleteNews = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this news post?')) return;
 
-      // Refresh state
-      const hallId = isSuperAdmin ? selectedHall : user?.hallId;
-      const currentHallNews = updatedNewsList.filter(n => !hallId || String(n.hallId) === String(hallId) || String(n.hallId) === 'all');
-      setNews(currentHallNews.sort((a, b) => new Date(b.date) - new Date(a.date)));
-    }
+    const { error } = await deleteNews(id);
+    if (error) alert(`Could not delete this announcement: ${error}`);
   };
 
   const getHallName = (hallId) => {
@@ -160,9 +168,9 @@ export default function News({ user }) {
             {halls.map((hall) => (
               <button 
                 key={hall.id}
-                onClick={() => setSelectedHall(Number(hall.id))}
+                onClick={() => setSelectedHall(hall.id)}
                 className={`px-6 py-2 font-label-md text-label-md uppercase tracking-widest transition-all rounded-lg ${
-                  selectedHall === Number(hall.id) 
+                  selectedHall === hall.id 
                     ? 'bg-black text-white' 
                     : 'bg-white border border-black text-black hover:bg-black hover:text-white'
                 }`}
@@ -353,6 +361,7 @@ export default function News({ user }) {
             <div className="flex gap-4 mt-4">
               <button 
                 type="submit" 
+                disabled={posting} 
                 className="flex-1 py-3 bg-deep-charcoal text-white rounded-lg font-semibold hover:bg-black transition-all shadow-sm"
               >
                 Post Announcement

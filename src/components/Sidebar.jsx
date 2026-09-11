@@ -4,22 +4,17 @@ import { NavLink } from 'react-router-dom';
 
 export default function Sidebar({ sidebarOpen, user }) {
   const isSuperAdmin = user?.role === 'super_admin';
-  const isTechnician = user?.role === 'technician';
 
   // ===== NAVIGATION ITEMS =====
+  // The technician role was removed (see remove_technician_role.sql), so
+  // there is no longer a technician-specific nav branch — only super_admin
+  // and hall_admin sign in to this dashboard.
   let navItems = [];
-  if (isTechnician) {
-    navItems = [
-      { path: '/', icon: 'dashboard', label: 'Dashboard' },
-      { path: '/schedule-appointment', icon: 'handshake', label: 'Schedule Appointment' },
-      { path: '/update-report', icon: 'build_circle', label: 'Update Report' },
-      { path: '/news', icon: 'campaign', label: 'Announcements' },
-      { path: '/settings', icon: 'settings_suggest', label: 'System Settings' },
-    ];
-  } else if (isSuperAdmin) {
+  if (isSuperAdmin) {
     navItems = [
       { path: '/', icon: 'dashboard', label: 'Dashboard' },
       { path: '/locations', icon: 'domain', label: 'Campus Infrastructure' },
+      { path: '/schedule-appointment', icon: 'calendar_month', label: 'Appointment Schedule' },
       { path: '/news', icon: 'campaign', label: 'Announcements' },
       { path: '/staff', icon: 'badge', label: 'Staff Management' },
       { path: '/students', icon: 'group', label: 'Student Directory' },
@@ -29,18 +24,14 @@ export default function Sidebar({ sidebarOpen, user }) {
     // Hall Admin
     navItems = [
       { path: '/', icon: 'dashboard', label: 'Dashboard' },
+      { path: '/schedule-appointment', icon: 'calendar_month', label: 'Appointment Schedule' },
       { path: '/news', icon: 'campaign', label: 'Announcements' },
-      { path: '/staff', icon: 'badge', label: 'Staff Management' },
       { path: '/students', icon: 'group', label: 'Student Directory' },
       { path: '/settings', icon: 'settings_suggest', label: 'System Settings' },
     ];
   }
 
-  const getRoleDisplay = () => {
-    if (user?.role === 'super_admin') return 'Super Admin';
-    if (user?.role === 'technician') return `${user?.specialty || 'Technician'} Specialist`;
-    return 'Hall Admin';
-  };
+  const getRoleDisplay = () => (isSuperAdmin ? 'Super Admin' : 'Hall Admin');
 
   return (
     <aside className={`fixed left-0 top-0 h-full w-64 bg-white border-r border-surface-container-highest flex flex-col z-50 transition-transform duration-300 md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -50,7 +41,7 @@ export default function Sidebar({ sidebarOpen, user }) {
             <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>architecture</span>
           </div>
           <div>
-            <h1 className="text-xl font-black tracking-tighter leading-none text-deep-charcoal">SnapFix</h1>
+            <h1 className="text-xl font-black tracking-tighter leading-none text-deep-charcoal">ResiFix KNUST</h1>
             <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-secondary mt-1">{getRoleDisplay()}</p>
           </div>
         </div>
@@ -79,10 +70,10 @@ export default function Sidebar({ sidebarOpen, user }) {
         <div className="flex items-center gap-3 mb-2 text-secondary">
           <div className="overflow-hidden">
             <p className="text-xs font-bold text-deep-charcoal truncate">{user?.name || 'User'}</p>
-            <p className="text-[10px] text-secondary truncate">{user?.email || 'user@snapfix.com'}</p>
+            <p className="text-[10px] text-secondary truncate">{user?.email || 'user@resifix.com'}</p>
           </div>
         </div>
       </div>
     </aside>
   );
-}
+}

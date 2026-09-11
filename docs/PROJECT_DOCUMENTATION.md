@@ -1,19 +1,32 @@
-# KNUST Hall Maintenance System - Web Admin & Technician Portal
+# ResiFix KNUST - Web Admin & Technician Portal
 ## Technical Project Documentation
 *Structured according to the KNUST College of Engineering Project Documentation Guidelines*
 
 ---
 
 ## Document Metadata
-- **Project Title:** KNUST Hall Maintenance System (Web Admin & Technician Dashboard)
+- **Project Title:** ResiFix KNUST (Web Admin & Technician Dashboard)
 - **Target Platform:** Desktop Web Browsers
 - **Development Stack:** React (v19), React Router DOM (v7), React Icons, LocalStorage Persistence
-- **Integration Partner:** HallMaintenance Mobile Client (React Native + Expo)
+- **Integration Partner:** ResiFix KNUST Mobile Client (React Native + Expo)
 - **Author:** System Development Team
 
 ---
 
+# Abstract
+
+Managing campus infrastructure across higher education institutions requires efficient coordination between residential students, hall administration, and maintenance staff. At Kwame Nkrumah University of Science and Technology (KNUST), traditional maintenance dispatching relies heavily on paper-based entry books, leading to lost tickets, unassigned work orders, and zero visibility into campus estate health.
+
+This documentation presents the **Admin-Dashboard**, a web-based administration and dispatch portal built with React 19 and React Router DOM (v7). Serving as the management backend to the **ResiFix KNUST** mobile student client, the platform introduces role-based access control (Super Admin, Hall Admin, and Technician), real-time ticket triage, automated skill-based technician dispatching (Electrical, Plumbing, Carpentry, Masonry), campus location management (Halls, Floors, Rooms), and announcement broadcasting. 
+
+Constructed using component-driven architecture and persistent state management, the dashboard enables hall managers to monitor work order progress, schedule technician appointments, and analyze infrastructure failure trends. The unified platform eliminates physical paperwork, reduces resolution times, and provides a scalable web-mobile maintenance ecosystem for campus residential management.
+
+**Keywords:** React 19, React Router DOM v7, Web Admin Dashboard, Facility Management, Technician Dispatching, ResiFix KNUST.
+
+---
+
 # Table of Contents
+0. [Abstract](#abstract)
 1. [Chapter 1: Introduction](#chapter-1-introduction)
 2. [Chapter 2: Review of Related Works / Similar Systems](#chapter-2-review-of-related-works--review-of-similar-systems)
 3. [Chapter 3: Methodology](#chapter-3-methodology)
@@ -33,7 +46,7 @@ In traditional university residential halls, specifically across the campus of K
 - **Lack of Analytical Records:** There is no persistent record of recurring infrastructure breakdowns, preventing data-driven estate decisions.
 
 ### Aim of the Project
-The primary aim is to design and develop a web-based management portal (**Admin-Dashboard**) integrated with a mobile client (**HallMaintenance**), providing a centralized, automated platform for managing residential hall maintenance requests, coordinating technician workflows, publishing announcements, and tracking facility conditions in real-time.
+The primary aim is to design and develop a web-based management portal (**Admin-Dashboard**) integrated with a mobile client (**ResiFix KNUST**), providing a centralized, automated platform for managing residential hall maintenance requests, coordinating technician workflows, publishing announcements, and tracking facility conditions in real-time.
 
 ### Specific Objectives of the Project
 1. **Role-Based Web Portal:** Build a responsive web portal supporting three distinct access tiers: Super Admin, Hall Admin, and Technician.
@@ -417,7 +430,7 @@ The system was validated using a structured component and integration testing su
 | Test ID | Scenario | Input Actions | Expected Outcome | Status |
 |---------|----------|---------------|------------------|--------|
 | TC-001  | Login Guard | Navigate to `/locations` unauthenticated | Redirected automatically to `/login` | **Passed** |
-| TC-002  | Auth Access | Submit credentials `admin@snapfix.com` | Logged in, dashboard loads statistics | **Passed** |
+| TC-002  | Auth Access | Submit credentials `admin@resifix.com` | Logged in, dashboard loads statistics | **Passed** |
 | TC-003  | Dispatch | Select 'Plumbing', assign to 'Plumbing Technician' | Ticket status updates, saved in localStorage | **Passed** |
 
 ---

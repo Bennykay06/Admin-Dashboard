@@ -3,45 +3,37 @@ import React, { useState } from 'react';
 export default function RealTimeAnalytics({ stats, onFilterChange, activeFilter }) {
   const [hoveredSlice, setHoveredSlice] = useState(null);
 
-  const { total, pending, scheduled, inProgress, resolved } = stats;
+  const { total, pending, scheduled, resolved } = stats;
 
-  // Slices configuration with colors matching the system's design guidelines
+  // A ticket moves Pending -> Scheduled -> Resolved. There is no separate
+  // "In Progress" state: once the hall admin books a visit the ticket is
+  // scheduled, and it stays that way until the repair is done.
   const slices = [
-    { 
-      key: 'pending', 
-      label: 'Unassigned', 
-      value: pending, 
-      color: '#B91C1C', 
+    {
+      key: 'pending',
+      label: 'Pending',
+      value: pending,
+      color: '#B91C1C',
       bgColor: 'rgba(239, 68, 68, 0.08)',
       borderColor: 'rgba(239, 68, 68, 0.2)',
       textClass: 'text-status-critical-text',
       icon: 'info'
     },
-    { 
-      key: 'scheduled', 
-      label: 'Assigned', 
-      value: scheduled, 
-      color: '#C2410C', 
+    {
+      key: 'scheduled',
+      label: 'Scheduled',
+      value: scheduled,
+      color: '#C2410C',
       bgColor: 'rgba(234, 88, 12, 0.08)',
       borderColor: 'rgba(234, 88, 12, 0.2)',
       textClass: 'text-status-scheduled-text',
       icon: 'calendar_today'
     },
-    { 
-      key: 'in-progress', 
-      label: 'In Progress', 
-      value: inProgress, 
-      color: '#1D4ED8', 
-      bgColor: 'rgba(37, 99, 235, 0.08)',
-      borderColor: 'rgba(37, 99, 235, 0.2)',
-      textClass: 'text-status-progress-text',
-      icon: 'engineering'
-    },
-    { 
-      key: 'resolved', 
-      label: 'Resolved', 
-      value: resolved, 
-      color: '#047857', 
+    {
+      key: 'resolved',
+      label: 'Resolved',
+      value: resolved,
+      color: '#047857',
       bgColor: 'rgba(16, 185, 129, 0.08)',
       borderColor: 'rgba(16, 185, 129, 0.2)',
       textClass: 'text-status-success-text',

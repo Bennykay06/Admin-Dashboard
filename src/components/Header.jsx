@@ -16,6 +16,7 @@ export default function Header({ user, setSidebarOpen, handleLogout, pageTitle }
       case '/locations': return 'Campus Infrastructure';
       case '/settings': return 'System Settings';
       case '/news': return 'Announcements';
+      case '/schedule-appointment': return 'Appointment Schedule';
       default: return 'Dashboard';
     }
   };
@@ -51,7 +52,7 @@ export default function Header({ user, setSidebarOpen, handleLogout, pageTitle }
           <div className="hidden sm:block text-left">
             <div className="text-xs font-bold text-deep-charcoal leading-none mb-0.5">{user?.name || 'User'}</div>
             <div className="text-[9px] text-secondary uppercase tracking-wider font-semibold leading-none">
-              {user?.role === 'super_admin' ? 'Super Admin' : user?.role === 'technician' ? 'Technician' : 'Hall Admin'}
+              {user?.role === 'super_admin' ? 'Super Admin' : 'Hall Admin'}
             </div>
           </div>
         </div>

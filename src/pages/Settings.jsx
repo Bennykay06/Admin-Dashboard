@@ -1,11 +1,32 @@
 // src/pages/Settings.jsx - MINIMALIST SYSTEM SETTINGS
 import React, { useState } from 'react';
-import { 
-  getPersistedAdmins, 
-  savePersistedAdmins,
-  getPersistedStaff,
-  savePersistedStaff 
-} from '../data/mockData';
+import { updateStaffProfile } from '../data/mockData';
+import supabase from '../lib/supabase';
+
+const SETTINGS_KEY = 'resifix_global_settings';
+const LEGACY_SETTINGS_KEY = 'snapfix_global_settings';
+
+/**
+ * Preferences were stored under snapfix_global_settings before the ResiFix
+ * KNUST rebrand. Without this, an admin who had already tuned auto-assign or
+ * evidence-required would quietly get the defaults back on the renamed build.
+ * Runs at module load, so it lands before the useState initialisers below
+ * read the key. The old entry is left in place — it costs nothing and keeps
+ * the rename reversible.
+ */
+const migrateLegacySettings = () => {
+  try {
+    if (localStorage.getItem(SETTINGS_KEY) !== null) return;
+    const legacy = localStorage.getItem(LEGACY_SETTINGS_KEY);
+    if (legacy === null) return;
+    JSON.parse(legacy); // a corrupt blob is not worth carrying over
+    localStorage.setItem(SETTINGS_KEY, legacy);
+  } catch (err) {
+    // Storage disabled or private mode — defaults are a fine outcome.
+  }
+};
+
+migrateLegacySettings();
 
 export default function Settings({ user, setUser }) {
   const isSuperAdmin = user?.role === 'super_admin';
@@ -20,20 +41,13 @@ export default function Settings({ user, setUser }) {
   const [isSavingGlobals, setIsSavingGlobals] = useState(false);
 
   // Global settings state loaded from localStorage
-  const [emailNotifications, setEmailNotifications] = useState(() => {
-    try {
-      const saved = localStorage.getItem('snapfix_global_settings');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return parsed.emailNotifications !== undefined ? parsed.emailNotifications : true;
-      }
-    } catch (e) {}
-    return true;
-  });
+  const [emailNotifications, setEmailNotifications] = useState(
+    user?.emailNotifications !== undefined ? user.emailNotifications : true
+  );
 
   const [autoAssign, setAutoAssign] = useState(() => {
     try {
-      const saved = localStorage.getItem('snapfix_global_settings');
+      const saved = localStorage.getItem(SETTINGS_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         return parsed.autoAssign !== undefined ? parsed.autoAssign : true;
@@ -44,7 +58,7 @@ export default function Settings({ user, setUser }) {
 
   const [requireEvidence, setRequireEvidence] = useState(() => {
     try {
-      const saved = localStorage.getItem('snapfix_global_settings');
+      const saved = localStorage.getItem(SETTINGS_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         return parsed.requireEvidence !== undefined ? parsed.requireEvidence : false;
@@ -53,7 +67,7 @@ export default function Settings({ user, setUser }) {
     return false;
   });
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
     setMessage({ type: '', text: '' });
 
@@ -67,95 +81,84 @@ export default function Settings({ user, setUser }) {
       return;
     }
 
+    if (password && password.length < 8) {
+      setMessage({ type: 'error', text: 'Password must be at least 8 characters.' });
+      return;
+    }
+
     setIsSavingProfile(true);
 
-    // Simulate saving process for responsiveness feedback
-    setTimeout(() => {
-      // Load admins
-      const currentAdmins = getPersistedAdmins();
-      const adminIndex = currentAdmins.findIndex(a => a.id === user.id);
+    try {
+      const { error: profileError } = await updateStaffProfile(user.id, { name: name.trim() });
+      if (profileError) throw new Error(profileError);
 
-      if (adminIndex !== -1) {
-        // Create the updated admin object
-        const updatedAdmin = {
-          ...currentAdmins[adminIndex],
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-        };
-
-        if (password) {
-          updatedAdmin.password = password;
-        }
-
-        // Save to admins array
-        currentAdmins[adminIndex] = updatedAdmin;
-        savePersistedAdmins(currentAdmins);
-
-        // If they are not super_admin, they exist in staff list, update staff record too
-        if (user.role !== 'super_admin') {
-          const currentStaff = getPersistedStaff();
-          const updatedStaff = currentStaff.map(s => {
-            // Compare with old email because email might be changing
-            if (s.email.toLowerCase() === user.email.toLowerCase()) {
-              return {
-                ...s,
-                name: name.trim(),
-                email: email.trim().toLowerCase()
-              };
-            }
-            return s;
-          });
-          savePersistedStaff(updatedStaff);
-        }
-
-        // Update state & localStorage session
-        localStorage.setItem('adminUser', JSON.stringify(updatedAdmin));
-        setUser(updatedAdmin);
-
-        // Clear password fields
-        setPassword('');
-        setConfirmPassword('');
-        setIsSavingProfile(false);
-
-        setMessage({ type: 'success', text: 'Profile and credentials updated successfully!' });
-
-        // Auto-dismiss notification after 4 seconds
-        setTimeout(() => {
-          setMessage(prev => prev.text === 'Profile and credentials updated successfully!' ? { type: '', text: '' } : prev);
-        }, 4000);
-      } else {
-        setIsSavingProfile(false);
-        setMessage({ type: 'error', text: 'User profile not found in system.' });
+      // Email and password live in Supabase Auth, not the profiles table.
+      const authChanges = {};
+      if (email.trim().toLowerCase() !== (user.email || '').toLowerCase()) {
+        authChanges.email = email.trim().toLowerCase();
       }
-    }, 1000);
+      if (password) {
+        authChanges.password = password;
+      }
+
+      let emailPending = false;
+      if (Object.keys(authChanges).length) {
+        const { error: authError } = await supabase.auth.updateUser(authChanges);
+        if (authError) throw new Error(authError.message);
+        emailPending = Boolean(authChanges.email);
+      }
+
+      setUser({ ...user, name: name.trim() });
+      setPassword('');
+      setConfirmPassword('');
+
+      setMessage({
+        type: 'success',
+        text: emailPending
+          // Supabase sends a confirmation link before an address change
+          // takes effect, so the old one keeps working until it is clicked.
+          ? 'Profile updated. Check your new inbox to confirm the email change.'
+          : 'Profile and credentials updated successfully!',
+      });
+
+      setTimeout(() => setMessage({ type: '', text: '' }), 4000);
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message || 'Could not save your profile.' });
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
-  const handleSaveGlobals = (e) => {
+  const handleSaveGlobals = async (e) => {
     e.preventDefault();
     setIsSavingGlobals(true);
     setMessage({ type: '', text: '' });
 
-    // Simulate saving process for responsiveness feedback
-    setTimeout(() => {
-      try {
-        const settings = {
-          emailNotifications,
-          autoAssign,
-          requireEvidence
-        };
-        localStorage.setItem('snapfix_global_settings', JSON.stringify(settings));
-        setIsSavingGlobals(false);
-        setMessage({ type: 'success', text: 'Global preferences updated successfully!' });
+    try {
+      // Save emailNotifications to the database profile
+      const { error: profileError } = await updateStaffProfile(user.id, { emailNotifications });
+      if (profileError) throw new Error(profileError);
+      
+      // Update the user state locally so it's fresh
+      setUser({ ...user, emailNotifications });
 
-        // Auto-dismiss notification after 4 seconds
-        setTimeout(() => {
-          setMessage(prev => prev.text === 'Global preferences updated successfully!' ? { type: '', text: '' } : prev);
-        }, 4000);
-      } catch (error) {
-        setIsSavingGlobals(false);
-        setMessage({ type: 'error', text: 'Failed to save global preferences.' });
-      }
-    }, 1000);
+      // Simulate saving remaining global settings to localStorage
+      const settings = {
+        autoAssign,
+        requireEvidence
+      };
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      
+      setMessage({ type: 'success', text: 'Preferences updated successfully!' });
+
+      setTimeout(() => {
+        setMessage(prev => prev.text === 'Preferences updated successfully!' ? { type: '', text: '' } : prev);
+      }, 4000);
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message || 'Failed to save preferences.' });
+    } finally {
+      setIsSavingGlobals(false);
+    }
   };
 
   return (

@@ -1,6 +1,13 @@
 // src/pages/Students.jsx - MINIMALIST STUDENT DIRECTORY WITH TECH REMARKS
 import React, { useState, useEffect } from 'react';
-import { getStudentsByHall, getPersistedHalls, getPersistedReports, getCategoryIcon } from '../data/mockData';
+import {
+  getStudentDirectory,
+  getPersistedHalls,
+  getPersistedReports,
+  getCategoryIcon,
+  updateStaffProfile,
+  useStoreVersion,
+} from '../data/mockData';
 
 export default function Students({ user }) {
   const isSuperAdmin = user?.role === 'super_admin';
@@ -12,44 +19,35 @@ export default function Students({ user }) {
   const [selectedStudentForRemarks, setSelectedStudentForRemarks] = useState(null);
   const [showRemarksModal, setShowRemarksModal] = useState(false);
 
+  // Bumps whenever the shared store changes, which is how a student who
+  // just signed up on the mobile app appears here without a refresh.
+  const version = useStoreVersion();
+
   const loadData = () => {
     setReports(getPersistedReports());
     const hallId = isSuperAdmin ? selectedHall : user?.hallId;
-    setStudents(getStudentsByHall(hallId));
+    setStudents(getStudentDirectory(hallId));
   };
 
-  // Load halls and initial students/reports
   useEffect(() => {
     setHalls(getPersistedHalls());
-  }, []);
+  }, [version]);
 
   useEffect(() => {
     loadData();
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('mock-data-updated', loadData);
-      return () => window.removeEventListener('mock-data-updated', loadData);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, selectedHall, isSuperAdmin]);
+  }, [user, selectedHall, isSuperAdmin, version]);
 
-  const toggleStatus = (id) => {
-    const allStudents = JSON.parse(localStorage.getItem('snapfix_students') || '[]');
-    const updatedStudents = allStudents.map(student => {
-      if (student.id === id) {
-        const currentStatus = student.status || 'active';
-        return {
-          ...student,
-          status: currentStatus === 'active' ? 'inactive' : 'active'
-        };
-      }
-      return student;
-    });
-    localStorage.setItem('snapfix_students', JSON.stringify(updatedStudents));
-    
-    // Refresh display
-    const hallId = isSuperAdmin ? selectedHall : user?.hallId;
-    setStudents(updatedStudents.filter(s => !hallId || String(s.hallId) === String(hallId)));
+  const toggleStatus = async (id) => {
+    const student = students.find((s) => s.id === id);
+    if (!student) return;
+
+    const { error } = await updateStaffProfile(id, { isActive: !student.isActive });
+    if (error) {
+      alert(`Could not update this student: ${error}`);
+      return;
+    }
+    // The store refreshes itself; the version bump re-runs loadData.
   };
 
   const handleOpenRemarks = (student) => {
@@ -59,11 +57,10 @@ export default function Students({ user }) {
 
   // Filter students based on search and resolved status
   const filteredStudents = students.filter(student => {
-    const isActive = (student.status || 'active') === 'active';
-    if (!isActive) return false;
+    if (!student.isActive) return false;
 
     const term = searchQuery.toLowerCase();
-    const room = student.room || `Block ${String.fromCharCode(65 + (Number(student.id) % 3))}-${100 + Number(student.id)}`;
+    const room = student.room || 'Not set';
     
     return (
       student.name.toLowerCase().includes(term) ||
@@ -83,11 +80,11 @@ export default function Students({ user }) {
 
   const exportCSV = () => {
     let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += 'Name,Hall,Room,Email,Reports,Technician Remarks,Fault Status\n';
+    csvContent += 'Name,Hall,Room,Email,Reports,Staff Remarks,Fault Status\n';
     
     filteredStudents.forEach(s => {
-      const room = s.room || `Block ${String.fromCharCode(65 + (Number(s.id) % 3))}-${100 + Number(s.id)}`;
-      const status = (s.status || 'active') === 'active' ? 'Resolved' : 'Pending';
+      const room = s.room || 'Not set';
+      const status = s.isActive ? 'Active' : 'Inactive';
 
       const studentReports = reports.filter(r => 
         (r.studentEmail && r.studentEmail.toLowerCase() === s.email.toLowerCase()) || 
@@ -200,7 +197,7 @@ export default function Students({ user }) {
                 <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold">Residential Location</th>
                 <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold">Email Address</th>
                 <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold text-center">Reports</th>
-                <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold">Technician Remarks</th>
+                <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold">Staff Remarks</th>
                 <th className="px-6 py-4 text-[11px] uppercase tracking-wider text-secondary font-bold">Fault Status</th>
               </tr>
             </thead>
@@ -213,8 +210,8 @@ export default function Students({ user }) {
                 </tr>
               ) : (
                 filteredStudents.map((student) => {
-                  const room = student.room || `Block ${String.fromCharCode(65 + (Number(student.id) % 3))}-${100 + Number(student.id)}`;
-                  const isActive = (student.status || 'active') === 'active';
+                  const room = student.room || 'Not set';
+                  const isActive = student.isActive;
                   
                   // Retrieve reports matching this student's details
                   const studentReports = reports.filter(r => 
@@ -295,7 +292,7 @@ export default function Students({ user }) {
                 <div>
                   <h3 className="text-lg font-bold text-deep-charcoal flex items-center gap-2">
                     <span className="material-symbols-outlined text-[24px]">description</span>
-                    Technician Remarks
+                    Staff Remarks
                   </h3>
                   <p className="text-xs text-secondary mt-1">
                     Resolved tickets history for <strong className="text-deep-charcoal">{selectedStudentForRemarks.name}</strong>
@@ -345,7 +342,7 @@ export default function Students({ user }) {
                       <div className="flex justify-between items-center text-[10px] text-secondary font-bold pt-2 border-t border-surface-container">
                         <div className="flex items-center gap-1.5">
                           <span className="material-symbols-outlined text-[14px]">badge</span>
-                          <span>By: {report.assignedName || 'Technician'} ({report.assignedSpecialty || report.category} Specialist)</span>
+                          <span>{report.category} Maintenance</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-[14px]">calendar_today</span>

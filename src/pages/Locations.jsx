@@ -1,20 +1,27 @@
 // src/pages/Locations.jsx - UPDATED TO CAMPUS INFRASTRUCTURE SYSTEM
 import React, { useState, useEffect } from 'react';
-import { getPersistedHalls, savePersistedHalls } from '../data/mockData';
+import { getPersistedHalls, saveHall, deleteHall, useStoreVersion } from '../data/mockData';
 import { Navigate } from 'react-router-dom';
 
 export default function Locations({ user }) {
   // ✅ All hooks must be called BEFORE any conditional returns
+  const version = useStoreVersion();
   const [locations, setLocations] = useState(() => getPersistedHalls());
   const [editedLocations, setEditedLocations] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  
+  const [saving, setSaving] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     code: '',
     floors: '',
     rooms: ''
   });
+
+  // Pull the halls back out of the store whenever it changes.
+  useEffect(() => {
+    setLocations(getPersistedHalls());
+  }, [version]);
 
   // Sync editedLocations with locations state
   useEffect(() => {
@@ -48,11 +55,38 @@ export default function Locations({ user }) {
     setEditedLocations(JSON.parse(JSON.stringify(locations)));
   };
 
-  const handleSaveChanges = () => {
-    // Save the global inputs to persistent storage
-    savePersistedHalls(editedLocations);
-    setLocations(editedLocations);
-    alert('Global infrastructure changes saved successfully!');
+  const handleSaveChanges = async () => {
+    setSaving(true);
+
+    // Only send halls the user actually edited.
+    const byId = new Map(locations.map(l => [l.id, l]));
+    const changed = editedLocations.filter(loc => {
+      const before = byId.get(loc.id);
+      if (!before) return true;
+      return (
+        before.name !== loc.name ||
+        before.code !== loc.code ||
+        Number(before.floors) !== Number(loc.floors) ||
+        Number(before.rooms) !== Number(loc.rooms)
+      );
+    });
+
+    const failures = [];
+    for (const loc of changed) {
+      const { error } = await saveHall(loc);
+      if (error) failures.push(`${loc.name}: ${error}`);
+    }
+    setSaving(false);
+
+    if (failures.length) {
+      alert(`Some halls could not be saved:\n\n${failures.join('\n')}`);
+      return;
+    }
+    alert(
+      changed.length
+        ? 'Global infrastructure changes saved successfully!'
+        : 'No changes to save.'
+    );
   };
 
   const handleAddLocation = () => {
@@ -60,32 +94,37 @@ export default function Locations({ user }) {
     setShowModal(true);
   };
 
-  const handleDeleteLocation = (id) => {
-    if (window.confirm('Are you sure you want to delete this hall from the system?')) {
-      const updated = locations.filter(loc => loc.id !== id);
-      setLocations(updated);
-      savePersistedHalls(updated);
+  const handleDeleteLocation = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this hall from the system?')) return;
+
+    const { error } = await deleteHall(id);
+    if (error) {
+      // Residents and reports reference halls, so the database may refuse.
+      alert(`Could not delete this hall: ${error}`);
     }
   };
 
-  const handleSaveNewLocation = (e) => {
+  const handleSaveNewLocation = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.code) {
       alert('Please fill in all required fields');
       return;
     }
 
-    const newLocation = {
-      id: Date.now().toString(),
-      name: formData.name,
+    setSaving(true);
+    // No id: saveHall inserts and the database assigns one.
+    const { error } = await saveHall({
+      name: formData.name.trim(),
       code: formData.code.toLowerCase().trim(),
       floors: Number(formData.floors || 0),
-      rooms: Number(formData.rooms || 0)
-    };
+      rooms: Number(formData.rooms || 0),
+    });
+    setSaving(false);
 
-    const updated = [...locations, newLocation];
-    setLocations(updated);
-    savePersistedHalls(updated);
+    if (error) {
+      alert(`Could not add this hall: ${error}`);
+      return;
+    }
     setShowModal(false);
   };
 
@@ -151,11 +190,12 @@ export default function Locations({ user }) {
             >
               Discard
             </button>
-            <button 
+            <button
               onClick={handleSaveChanges}
-              className="px-6 py-2 bg-deep-charcoal text-white rounded-lg font-label-md text-label-md hover:opacity-90 transition-all shadow-sm"
+              disabled={saving}
+              className="px-6 py-2 bg-deep-charcoal text-white rounded-lg font-label-md text-label-md hover:opacity-90 transition-all shadow-sm disabled:opacity-60"
             >
-              Save Global Changes
+              {saving ? 'Saving…' : 'Save Global Changes'}
             </button>
           </div>
         </div>

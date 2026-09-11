@@ -1,7 +1,12 @@
 import React from 'react';
-import { halls } from '../data/mockData';
+import { getPersistedHalls, useStoreVersion } from '../data/mockData';
 
 export default function HallSelector({ selectedHall, onSelectHall }) {
+  // Halls come from the database now rather than a static array, so this
+  // re-renders if the super admin adds or renames one.
+  useStoreVersion();
+  const halls = getPersistedHalls();
+
   return (
     <div className="hall-selector">
       <button
